@@ -173,6 +173,10 @@
         <img id="imagePreview" class="preview" alt="Selected YSI image preview" />
       </div>
       <div class="small muted" style="margin-top:8px;">Tip: after OCR runs, review every value before saving. Safari can do this, but OCR may take several seconds on phone.</div>
+      <div style="margin-top:12px;">
+        <label for="rawOcrText">Raw OCR text</label>
+        <textarea id="rawOcrText" rows="8" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;"></textarea>
+      </div>
     </div>
 
     <div class="card">
@@ -250,57 +254,114 @@ function formatTimeFromDateObj(dt) {
 function normalizeText(text) {
   return (text || "")
     .replace(/[|]/g, "1")
+    .replace(/[Oo](?=\d)/g, "0")
     .replace(/[,]/g, ".")
     .replace(/ /g, " ")
     .replace(/mg1L/gi, "mg/L")
     .replace(/mq\/L/gi, "mg/L")
     .replace(/mghL/gi, "mg/L")
-    .replace(/uS/gi, "uS")
+    .replace(/DO\.\s*%/gi, "DO %")
+    .replace(/SAL[-\s]*ppt/gi, "SAL ppt")
+    .replace(/u5/gi, "uS")
     .replace(/μS/gi, "uS")
     .replace(/µS/gi, "uS")
-    .replace(/SAL-ppt/gi, "SAL ppt");
+    .replace(/
+/g, "
+");
+}
+
+function cleanNumeric(value) {
+  if (!value) return "";
+  const v = String(value).replace(/[^0-9.\-]/g, "");
+  const parts = v.split(".");
+  if (parts.length <= 2) return v;
+  return parts[0] + "." + parts.slice(1).join("");
 }
 
 function matchValue(text, patterns) {
   for (const pattern of patterns) {
     const m = text.match(pattern);
-    if (m && m[1]) return m[1];
+    if (m && m[1]) return cleanNumeric(m[1]);
   }
   return "";
+}
+
+function parseLabeledLines(text) {
+  const compact = text.replace(/
++/g, " ");
+  return {
+    temp: matchValue(compact, [/(\d+(?:\.\d+)?)\s*°?\s*C/i]),
+    cond: matchValue(compact, [/(\d+(?:\.\d+)?)\s*SPC/i, /(\d+(?:\.\d+)?)\s*(?:uS|US)\s*\/?\s*cm/i]),
+    salinity: matchValue(compact, [/(\d+(?:\.\d+)?)\s*SAL/i, /(\d+(?:\.\d+)?)\s*ppt/i]),
+    doMgL: matchValue(compact, [/(\d+(?:\.\d+)?)\s*DO\s*(?:mg\/?L)/i, /(\d+(?:\.\d+)?)\s*mg\/?L/i]),
+    doPct: matchValue(compact, [/(\d+(?:\.\d+)?)\s*DO\s*%/i, /(\d+(?:\.\d+)?)\s*%/i]),
+    ph: matchValue(compact, [/(\d+(?:\.\d+)?)\s*pH/i]),
+    turb: matchValue(compact, [/(\d+(?:\.\d+)?)\s*NTU/i])
+  };
+}
+
+function parseByOrder(text) {
+  const lines = text.split(/
++/).map(s => s.trim()).filter(Boolean);
+  const nums = [];
+  for (const line of lines) {
+    const m = line.match(/^([0-9]+(?:\.[0-9]+)?)/);
+    if (m) nums.push(cleanNumeric(m[1]));
+  }
+  return {
+    temp: nums[0] || "",
+    doPct: nums[2] || "",
+    doMgL: nums[3] || "",
+    cond: nums[4] || "",
+    salinity: nums[5] || "",
+    ph: nums[6] || "",
+    turb: nums[7] || ""
+  };
 }
 
 function parseYsiText(rawText) {
   const text = normalizeText(rawText);
   const dtMatch = text.match(/(\d{2}\/\d{2}\/\d{2})\s+(\d{1,2}:\d{2}:\d{2}\s*[AP]M)/i);
+  const labeled = parseLabeledLines(text);
+  const ordered = parseByOrder(text);
   const parsed = {
     timestamp: dtMatch ? `${dtMatch[1]} ${dtMatch[2].toUpperCase()}` : "",
     date: dtMatch ? dtMatch[1] : "",
     time: dtMatch ? dtMatch[2].toUpperCase() : "",
-    temp: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*°?\s*C/i
-    ]),
-    cond: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*SPC/i,
-      /(\d+(?:\.\d+)?)\s*(?:uS|US)\s*\/?\s*cm/i
-    ]),
-    salinity: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*SAL/i,
-      /(\d+(?:\.\d+)?)\s*ppt/i
-    ]),
-    doMgL: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*DO\s*(?:mg\/?L)/i
-    ]),
-    doPct: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*DO\s*%/i
-    ]),
-    ph: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*pH/i
-    ]),
-    turb: matchValue(text, [
-      /(\d+(?:\.\d+)?)\s*NTU/i
-    ])
+    temp: labeled.temp || ordered.temp || "",
+    cond: labeled.cond || ordered.cond || "",
+    salinity: labeled.salinity || ordered.salinity || "",
+    doMgL: labeled.doMgL || ordered.doMgL || "",
+    doPct: labeled.doPct || ordered.doPct || "",
+    ph: labeled.ph || ordered.ph || "",
+    turb: labeled.turb || ordered.turb || ""
   };
   return parsed;
+}
+
+async function preprocessImage(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 1600;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+        const boosted = gray > 140 ? 255 : gray < 80 ? 0 : gray;
+        d[i] = d[i+1] = d[i+2] = boosted;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = dataUrl;
+  });
 }
 
 function buildSites() {
@@ -428,8 +489,10 @@ async function runOcr() {
     setStatus("Choose a photo first.");
     return;
   }
+  setStatus("Preparing image for OCR...");
+  const processed = await preprocessImage(state.selectedImageDataUrl);
   setStatus("Running OCR... this can take a little while on iPhone.");
-  const result = await Tesseract.recognize(state.selectedImageDataUrl, 'eng', {
+  const result = await Tesseract.recognize(processed, 'eng', {
     logger: m => {
       if (m.status === 'recognizing text') {
         setStatus(`OCR in progress: ${Math.round((m.progress || 0) * 100)}%`);
@@ -437,6 +500,7 @@ async function runOcr() {
     }
   });
   const text = result?.data?.text || "";
+  document.getElementById('rawOcrText').value = text;
   state.parsed = parseYsiText(text);
   if (!state.parsed.date) {
     const surveyDate = document.getElementById("surveyDate").value;
@@ -446,7 +510,12 @@ async function runOcr() {
     state.parsed.time = formatTimeFromDateObj(new Date());
   }
   renderParsed();
-  setStatus("OCR complete. Review the values, edit anything needed, then tap Save reading.");
+  const gotValues = [state.parsed.temp, state.parsed.cond, state.parsed.salinity, state.parsed.doMgL, state.parsed.doPct, state.parsed.ph, state.parsed.turb].filter(Boolean).length;
+  if (gotValues === 0) {
+    setStatus("OCR ran, but the parser did not recognize the values. Check the Raw OCR text box and enter values manually if needed.");
+  } else {
+    setStatus("OCR complete. Review the values, edit anything needed, then tap Save reading.");
+  }
 }
 
 function selectedRowMeta() {
