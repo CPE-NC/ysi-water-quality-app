@@ -1,813 +1,418 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>YSI Water Quality Logger</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YSI Logger v7</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
-  :root {
-    --bg: #f4f6f8;
-    --card: #ffffff;
-    --border: #d7dde5;
-    --text: #1f2937;
-    --muted: #6b7280;
-    --primary: #0b65c2;
-    --primary-dark: #0a57a6;
-    --bad: #b42318;
-    --good: #027a48;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    padding: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
-  .wrap {
-    max-width: 860px;
-    margin: 0 auto;
-  }
-  h1 {
-    font-size: 1.5rem;
-    margin: 0 0 12px;
-  }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 14px;
-    box-shadow: 0 2px 6px rgba(16,24,40,.05);
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-  .grid3 {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-  }
-  .grid4 {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-  }
-  @media (max-width: 700px) {
-    .grid, .grid3, .grid4 { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 460px) {
-    .grid, .grid3, .grid4 { grid-template-columns: 1fr; }
-  }
-  label {
-    display: block;
-    font-weight: 600;
-    font-size: .92rem;
-    margin-bottom: 6px;
-  }
-  input, select, button, textarea {
-    width: 100%;
-    padding: 12px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: white;
-    font: inherit;
-  }
-  textarea {
-    min-height: 110px;
-    resize: vertical;
-  }
-  button {
-    border: none;
-    background: var(--primary);
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  button.secondary {
-    background: #e5e7eb;
-    color: #111827;
-  }
-  button:disabled {
-    opacity: .6;
-    cursor: wait;
-  }
-  .btnrow {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 12px;
-  }
-  .small {
-    color: var(--muted);
-    font-size: .9rem;
-    line-height: 1.35;
-  }
-  .status {
-    margin-top: 10px;
-    font-size: .92rem;
-    font-weight: 600;
-  }
-  .status.good { color: var(--good); }
-  .status.bad { color: var(--bad); }
-  .preview-wrap {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  @media (max-width: 760px) {
-    .preview-wrap { grid-template-columns: 1fr; }
-  }
-  img, canvas {
-    width: 100%;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: #fff;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: .9rem;
-  }
-  th, td {
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-    padding: 8px 6px;
-    vertical-align: top;
-  }
-  th { background: #f9fafb; position: sticky; top: 0; }
-  .table-wrap { overflow: auto; max-height: 280px; }
-  .pill {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: #eef4ff;
-    color: #0b65c2;
-    font-size: .78rem;
-    font-weight: 700;
-  }
+body{font-family:Arial,sans-serif;background:#f5f7fa;margin:0;padding:16px;color:#222}
+.card{background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:14px;margin:0 auto 14px;max-width:900px}
+h1,h2{margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+label{display:block;font-weight:700;margin:0 0 6px}
+input,select,button,textarea{width:100%;padding:12px;border:1px solid #cfd6e0;border-radius:10px;font-size:16px;box-sizing:border-box}
+button{background:#0b65c2;color:#fff;border:none;font-weight:700}
+button.secondary{background:#e5e7eb;color:#111}
+img,canvas{width:100%;border:1px solid #cfd6e0;border-radius:10px;background:#fff}
+.small{font-size:14px;color:#555;line-height:1.35}
+.status{margin-top:10px;font-weight:700}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:800px){.row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.row{grid-template-columns:1fr}}
+.table-wrap{overflow:auto;max-height:260px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}
+.version{display:inline-block;background:#eef4ff;color:#0b65c2;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700;margin-bottom:10px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>YSI Water Quality Logger</h1>
-
-  <div class="card">
-    <div class="grid">
-      <div>
-        <label for="site">Site</label>
-        <select id="site"></select>
-      </div>
-      <div>
-        <label for="depthMode">Depth</label>
-        <select id="depthMode">
-          <option value="0.1">0.1 ft</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-    </div>
-    <div id="customDepthWrap" style="display:none; margin-top: 12px;">
-      <label for="customDepth">Custom depth (ft)</label>
-      <input id="customDepth" type="number" step="0.01" inputmode="decimal" placeholder="Enter depth in feet" />
-    </div>
-
-    <div class="grid" style="margin-top:12px;">
-      <div>
-        <label for="date">Date (MM/DD/YY)</label>
-        <input id="date" />
-      </div>
-      <div>
-        <label for="time">Time</label>
-        <input id="time" />
-      </div>
-    </div>
-
-    <div style="margin-top:12px;">
-      <label for="photo">YSI photo</label>
-      <input id="photo" type="file" accept="image/*" capture="environment" />
-    </div>
-
-    <div class="preview-wrap" style="margin-top:12px;">
-      <div>
-        <div class="small" style="margin-bottom:6px;"><span class="pill">Original</span></div>
-        <img id="preview" alt="Original preview" />
-      </div>
-      <div>
-        <div class="small" style="margin-bottom:6px;"><span class="pill">Auto-cropped / glare-reduced OCR target</span></div>
-        <canvas id="processedCanvas"></canvas>
-      </div>
-    </div>
-
-    <div class="small" style="margin-top:10px;">
-      Field tip: fill the frame with the blue data screen as much as possible. Keep the phone square to the screen. This version auto-crops toward the display and runs OCR on multiple processed views to better handle glare.
-    </div>
-
-    <div class="btnrow">
-      <button id="ocrBtn" type="button">Run OCR on selected photo</button>
-      <button id="clearBtn" class="secondary" type="button">Clear form</button>
-    </div>
-    <div id="status" class="status"></div>
+<div class="card">
+<div class="version">v7 cache-bust rebuild</div>
+<h1>YSI Water Quality Logger</h1>
+<div class="grid">
+  <div>
+    <label for="site">Site</label>
+    <select id="site"></select>
   </div>
-
-  <div class="card">
-    <h2 style="margin-top:0;">Parsed values</h2>
-    <div class="grid4">
-      <div><label for="temp">Temp.</label><input id="temp" inputmode="decimal"></div>
-      <div><label for="cond">Cond.</label><input id="cond" inputmode="decimal"></div>
-      <div><label for="salinity">Salinity</label><input id="salinity" inputmode="decimal"></div>
-      <div><label for="do_mg">DO mg/L</label><input id="do_mg" inputmode="decimal"></div>
-      <div><label for="do_pct">DO%</label><input id="do_pct" inputmode="decimal"></div>
-      <div><label for="ph">pH</label><input id="ph" inputmode="decimal"></div>
-      <div><label for="turb">Turb</label><input id="turb" inputmode="decimal"></div>
-      <div><label for="ocrDepth">YSI depth (m, optional)</label><input id="ocrDepth" inputmode="decimal"></div>
-    </div>
+  <div>
+    <label for="depthSelect">Depth</label>
+    <select id="depthSelect">
+      <option value="0.1">0.1 ft</option>
+      <option value="custom">Custom</option>
+    </select>
   </div>
+</div>
+<div id="customDepthWrap" style="display:none;margin-top:12px;">
+  <label for="customDepth">Custom depth (ft)</label>
+  <input id="customDepth" type="number" step="0.01" placeholder="Enter custom depth">
+</div>
+<div class="grid" style="margin-top:12px;">
+  <div><label for="date">Date</label><input id="date"></div>
+  <div><label for="time">Time</label><input id="time"></div>
+</div>
+<div style="margin-top:12px;">
+  <label for="photo">YSI photo</label>
+  <input id="photo" type="file" accept="image/*" capture="environment">
+</div>
+<div class="grid" style="margin-top:12px;">
+  <div><img id="preview" alt="preview"></div>
+  <div><canvas id="ocrCanvas"></canvas></div>
+</div>
+<div class="small" style="margin-top:10px;">This version should visibly show sites in the dropdown and reveal a custom depth box when you choose Custom. The photo preview should appear immediately after image selection.</div>
+<div class="grid" style="margin-top:12px;">
+  <div><button id="ocrBtn" type="button">Run OCR on selected photo</button></div>
+  <div><button id="clearBtn" class="secondary" type="button">Clear form</button></div>
+</div>
+<div id="status" class="status"></div>
+</div>
 
-  <div class="card">
-    <h2 style="margin-top:0;">Raw OCR text</h2>
-    <textarea id="rawText" placeholder="OCR output will appear here."></textarea>
-  </div>
+<div class="card">
+<h2>Parsed values</h2>
+<div class="row">
+  <div><label for="temp">Temp.</label><input id="temp"></div>
+  <div><label for="cond">Cond.</label><input id="cond"></div>
+  <div><label for="salinity">Salinity</label><input id="salinity"></div>
+  <div><label for="do_mg">DO mg/L</label><input id="do_mg"></div>
+  <div><label for="do_pct">DO%</label><input id="do_pct"></div>
+  <div><label for="ph">pH</label><input id="ph"></div>
+  <div><label for="turb">Turb</label><input id="turb"></div>
+  <div><label for="ocrDepth">YSI depth (m)</label><input id="ocrDepth"></div>
+</div>
+</div>
 
-  <div class="card">
-    <div class="btnrow">
-      <button id="saveBtn" type="button">Save reading</button>
-      <button id="exportBtn" type="button">Export Excel</button>
-    </div>
-  </div>
+<div class="card">
+<h2>Raw OCR text</h2>
+<textarea id="rawText" rows="8"></textarea>
+</div>
 
-  <div class="card">
-    <h2 style="margin-top:0;">Saved readings</h2>
-    <div class="table-wrap">
-      <table id="savedTable">
-        <thead>
-          <tr>
-            <th>Site</th><th>Depth</th><th>Date</th><th>Time</th><th>Temp</th><th>Cond</th><th>Salinity</th><th>DO mg/L</th><th>DO%</th><th>pH</th><th>Turb</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
+<div class="card">
+<div class="grid">
+  <div><button id="saveBtn" type="button">Save reading</button></div>
+  <div><button id="exportBtn" type="button">Export Excel</button></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Saved readings</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Site</th><th>Depth</th><th>Date</th><th>Time</th><th>Temp</th><th>Cond</th><th>Salinity</th><th>DO mg/L</th><th>DO%</th><th>pH</th><th>Turb</th></tr></thead>
+<tbody id="savedBody"></tbody>
+</table>
+</div>
 </div>
 
 <script>
-const SITE_OPTIONS = [{"site": "LC-RR", "creek": "Lords"}, {"site": "BC-CBR", "creek": "Barnard"}, {"site": "MOT-CBR", "creek": "Motts"}, {"site": "MOT-ND", "creek": "Motts"}, {"site": "PG-ML", "creek": "Prince Georges"}, {"site": "PG-CH", "creek": "Prince Georges"}, {"site": "PG-NC", "creek": "Prince Georges"}, {"site": "SC-CH", "creek": "Smith"}, {"site": "SC-CD", "creek": "Smith"}, {"site": "SC-NK", "creek": "Smith"}, {"site": "SC-GR", "creek": "Smith"}, {"site": "IC-HS", "creek": "Island"}, {"site": "IC-SID", "creek": "Island"}, {"site": "FC-4", "creek": "Futch"}, {"site": "FC-6", "creek": "Futch"}, {"site": "FC-13", "creek": "Futch"}, {"site": "FC-FOY", "creek": "Futch"}, {"site": "PC-BDUS", "creek": "Pages"}, {"site": "PC-BDDS", "creek": "Pages"}, {"site": "PC-M", "creek": "Pages"}];
-const STORAGE_KEY = "ysi-water-quality-readings-v6";
-const els = {};
-let originalImage = null;
-let currentProcessed = null;
-let savedReadings = [];
+var SITE_OPTIONS = ["LC-RR", "BC-CBR", "MOT-CBR", "MOT-ND", "PG-ML", "PG-CH", "PG-NC", "SC-CH", "SC-CD", "SC-NK", "SC-GR", "IC-HS", "IC-SID", "FC-4", "FC-6", "FC-13", "FC-FOY", "PC-BDUS", "PC-BDDS", "PC-M"];
+var CREEK_MAP = {"LC-RR": "Lords", "BC-CBR": "Barnard", "MOT-CBR": "Motts", "MOT-ND": "Motts", "PG-ML": "Prince Georges", "PG-CH": "Prince Georges", "PG-NC": "Prince Georges", "SC-CH": "Smith", "SC-CD": "Smith", "SC-NK": "Smith", "SC-GR": "Smith", "IC-HS": "Island", "IC-SID": "Island", "FC-4": "Futch", "FC-6": "Futch", "FC-13": "Futch", "FC-FOY": "Futch", "PC-BDUS": "Pages", "PC-BDDS": "Pages", "PC-M": "Pages"};
+var STORAGE_KEY = "ysi_logger_v7";
+var originalImgSrc = "";
+var savedReadings = [];
 
-document.addEventListener("DOMContentLoaded", init);
+function $(id) { return document.getElementById(id); }
 
 function init() {
-  bindElements();
   populateSites();
-  wireEvents();
-  setDefaultDateTime();
-  loadSavedReadings();
-  renderSavedTable();
-}
+  setDefaults();
+  loadSaved();
+  renderSaved();
 
-function bindElements() {
-  ["site","depthMode","customDepth","customDepthWrap","date","time","photo","preview","processedCanvas","ocrBtn","clearBtn","status","temp","cond","salinity","do_mg","do_pct","ph","turb","ocrDepth","rawText","saveBtn","exportBtn"]
-    .forEach(id => els[id] = document.getElementById(id));
-}
+  $("depthSelect").onchange = function() {
+    $("customDepthWrap").style.display = this.value === "custom" ? "block" : "none";
+  };
 
-function wireEvents() {
-  els.depthMode.addEventListener("change", () => {
-    els.customDepthWrap.style.display = els.depthMode.value === "custom" ? "block" : "none";
-  });
-  els.photo.addEventListener("change", handlePhotoChange);
-  els.ocrBtn.addEventListener("click", runOCRWorkflow);
-  els.clearBtn.addEventListener("click", clearForm);
-  els.saveBtn.addEventListener("click", saveReading);
-  els.exportBtn.addEventListener("click", exportExcel);
+  $("photo").onchange = function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      originalImgSrc = evt.target.result;
+      $("preview").src = originalImgSrc;
+      setStatus("Photo loaded. Run OCR when ready.", false);
+      preprocessForDisplay(originalImgSrc);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  $("ocrBtn").onclick = runOCR;
+  $("clearBtn").onclick = clearForm;
+  $("saveBtn").onclick = saveReading;
+  $("exportBtn").onclick = exportExcel;
 }
 
 function populateSites() {
-  els.site.innerHTML = "";
-  SITE_OPTIONS.forEach(opt => {
-    const o = document.createElement("option");
-    o.value = opt.site;
-    o.textContent = `${opt.site} (${opt.creek})`;
-    els.site.appendChild(o);
-  });
-}
-
-function setDefaultDateTime() {
-  const now = new Date();
-  if (!els.date.value) {
-    const mm = String(now.getMonth()+1).padStart(2,"0");
-    const dd = String(now.getDate()).padStart(2,"0");
-    const yy = String(now.getFullYear()).slice(-2);
-    els.date.value = `${mm}/${dd}/${yy}`;
-  }
-  if (!els.time.value) {
-    els.time.value = now.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit', second: '2-digit'});
+  var sel = $("site");
+  sel.innerHTML = "";
+  for (var i = 0; i < SITE_OPTIONS.length; i++) {
+    var opt = document.createElement("option");
+    opt.value = SITE_OPTIONS[i];
+    opt.text = SITE_OPTIONS[i];
+    sel.appendChild(opt);
   }
 }
 
-function setStatus(msg, kind="good") {
-  els.status.textContent = msg || "";
-  els.status.className = `status ${kind}`;
+function setDefaults() {
+  var d = new Date();
+  var mm = ("0" + (d.getMonth()+1)).slice(-2);
+  var dd = ("0" + d.getDate()).slice(-2);
+  var yy = String(d.getFullYear()).slice(-2);
+  $("date").value = mm + "/" + dd + "/" + yy;
+  $("time").value = d.toLocaleTimeString();
 }
 
-function clearNumericFields() {
-  ["temp","cond","salinity","do_mg","do_pct","ph","turb","ocrDepth","rawText"].forEach(id => els[id].value = "");
+function setStatus(msg, isError) {
+  $("status").textContent = msg;
+  $("status").style.color = isError ? "#b42318" : "#027a48";
 }
 
 function clearForm() {
-  clearNumericFields();
-  els.photo.value = "";
-  els.preview.removeAttribute("src");
-  const ctx = els.processedCanvas.getContext("2d");
-  ctx.clearRect(0,0,els.processedCanvas.width, els.processedCanvas.height);
-  originalImage = null;
-  currentProcessed = null;
-  setDefaultDateTime();
-  setStatus("Form cleared.", "good");
+  $("photo").value = "";
+  $("preview").src = "";
+  var c = $("ocrCanvas");
+  var ctx = c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  $("rawText").value = "";
+  var ids = ["temp","cond","salinity","do_mg","do_pct","ph","turb","ocrDepth"];
+  for (var i=0;i<ids.length;i++) $(ids[i]).value = "";
+  setDefaults();
+  setStatus("Form cleared.", false);
 }
 
-function getChosenDepth() {
-  return els.depthMode.value === "custom" ? (els.customDepth.value || "") : "0.1";
-}
+function preprocessForDisplay(src) {
+  var img = new Image();
+  img.onload = function() {
+    var canvas = $("ocrCanvas");
+    var ctx = canvas.getContext("2d");
+    var w = img.width, h = img.height;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img,0,0);
 
-function handlePhotoChange(ev) {
-  const file = ev.target.files && ev.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      originalImage = img;
-      els.preview.src = reader.result;
-      clearNumericFields();
-      setStatus("Photo loaded. Run OCR when ready.", "good");
-    };
-    img.src = reader.result;
+    // center crop toward screen
+    var sx = Math.round(w * 0.22);
+    var sy = Math.round(h * 0.05);
+    var sw = Math.round(w * 0.56);
+    var sh = Math.round(h * 0.80);
+
+    var temp = document.createElement("canvas");
+    temp.width = sw;
+    temp.height = sh;
+    var tctx = temp.getContext("2d");
+    tctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    // grayscale + contrast
+    var imgData = tctx.getImageData(0,0,sw,sh);
+    var d = imgData.data;
+    for (var i=0;i<d.length;i+=4) {
+      var gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+      var v = ((gray - 128) * 1.9) + 128;
+      if (v > 235) v = 215;
+      if (v < 0) v = 0;
+      if (v > 255) v = 255;
+      d[i]=d[i+1]=d[i+2]=v;
+    }
+    tctx.putImageData(imgData,0,0);
+
+    canvas.width = sw;
+    canvas.height = sh;
+    ctx.drawImage(temp,0,0);
   };
-  reader.readAsDataURL(file);
+  img.src = src;
 }
 
-async function runOCRWorkflow() {
-  if (!originalImage) {
-    setStatus("Select a photo first.", "bad");
+function runOCR() {
+  if (!originalImgSrc) {
+    setStatus("Select a photo first.", true);
     return;
   }
-  setStatus("Running OCR. This may take 10–25 seconds on a phone.", "good");
-  els.ocrBtn.disabled = true;
-  try {
-    const processed = buildProcessedTargets(originalImage);
-    currentProcessed = processed.primary;
-    drawCanvas(els.processedCanvas, currentProcessed);
+  setStatus("Running OCR. This can take a while on a phone.", false);
+  $("ocrBtn").disabled = true;
 
-    const attempts = [];
-    attempts.push(await ocrDateTime(processed.header));
-    for (const [name, canvas] of Object.entries(processed.valuePasses)) {
-      const raw = await ocrNumericColumn(canvas);
-      attempts.push({ kind: "values", name, raw, parsed: parseNumericValues(raw) });
-    }
-
-    // Best values attempt = highest count of plausible fields
-    const valueAttempts = attempts.filter(a => a.kind === "values");
-    valueAttempts.sort((a,b) => scoreParsed(b.parsed) - scoreParsed(a.parsed));
-    const bestValues = valueAttempts[0];
-
-    const dtAttempt = attempts.find(a => a.kind === "datetime");
-    const rawSummary = [
-      dtAttempt ? `=== DATETIME OCR ===\n${dtAttempt.raw}` : "",
-      ...valueAttempts.map(a => `=== VALUES OCR (${a.name}) ===\n${a.raw}`)
-    ].join("\n\n");
-    els.rawText.value = rawSummary.trim();
-
-    if (dtAttempt) applyDateTime(dtAttempt);
-    if (bestValues && scoreParsed(bestValues.parsed) > 0) {
-      applyParsed(bestValues.parsed);
-      const n = scoreParsed(bestValues.parsed);
-      setStatus(`OCR complete. Parsed ${n} value${n===1?"":"s"}. Review before saving.`, n >= 5 ? "good" : "bad");
-    } else {
-      setStatus("OCR ran, but numeric parsing was weak. Try a closer, squarer photo or edit the values manually.", "bad");
-    }
-  } catch (err) {
-    console.error(err);
-    setStatus("OCR failed. Try again with a closer photo.", "bad");
-  } finally {
-    els.ocrBtn.disabled = false;
-  }
-}
-
-function buildProcessedTargets(img) {
-  const src = imageToCanvas(img);
-
-  // Detect the blue screen area. Fallback to center crop if needed.
-  const screenBox = detectBlueScreenBox(src) || {
-    x: Math.round(src.width * 0.24),
-    y: Math.round(src.height * 0.08),
-    w: Math.round(src.width * 0.52),
-    h: Math.round(src.height * 0.72)
-  };
-
-  const screen = cropCanvas(src, screenBox.x, screenBox.y, screenBox.w, screenBox.h);
-  const header = cropCanvas(screen, 0, 0, screen.width, Math.max(40, Math.round(screen.height * 0.16)));
-
-  // Left numeric column only. This is the key reliability improvement.
-  const valuesBase = cropCanvas(
-    screen,
-    Math.round(screen.width * 0.08),
-    Math.round(screen.height * 0.19),
-    Math.round(screen.width * 0.46),
-    Math.round(screen.height * 0.77)
-  );
-
-  const glareReduced = equalizeAndDesaturate(valuesBase, 2.0);
-  const highContrast = thresholdCanvas(glareReduced, 148);
-  const inverted = invertCanvas(highContrast);
-  const enlarged = scaleCanvas(highContrast, 2.8);
-  const enlargedGray = scaleCanvas(glareReduced, 2.5);
-
-  return {
-    primary: scaleCanvas(screen, 1.5),
-    header: scaleCanvas(equalizeAndDesaturate(header, 1.6), 2.4),
-    valuePasses: {
-      gray: enlargedGray,
-      bw: enlarged,
-      inverted: scaleCanvas(inverted, 2.8)
-    }
-  };
-}
-
-function imageToCanvas(img) {
-  const c = document.createElement("canvas");
-  c.width = img.naturalWidth || img.width;
-  c.height = img.naturalHeight || img.height;
-  c.getContext("2d").drawImage(img, 0, 0);
-  return c;
-}
-
-function cropCanvas(source, x, y, w, h) {
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, w);
-  c.height = Math.max(1, h);
-  c.getContext("2d").drawImage(source, x, y, w, h, 0, 0, w, h);
-  return c;
-}
-
-function scaleCanvas(source, factor) {
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(source.width * factor));
-  c.height = Math.max(1, Math.round(source.height * factor));
-  const ctx = c.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(source, 0, 0, c.width, c.height);
-  return c;
-}
-
-function drawCanvas(canvasEl, sourceCanvas) {
-  canvasEl.width = sourceCanvas.width;
-  canvasEl.height = sourceCanvas.height;
-  const ctx = canvasEl.getContext("2d");
-  ctx.clearRect(0,0,canvasEl.width, canvasEl.height);
-  ctx.drawImage(sourceCanvas, 0, 0);
-}
-
-function detectBlueScreenBox(source) {
-  const ctx = source.getContext("2d");
-  const { width, height } = source;
-  const data = ctx.getImageData(0,0,width,height).data;
-  let minX = width, minY = height, maxX = 0, maxY = 0, count = 0;
-
-  // Downsample scan for speed.
-  const step = Math.max(2, Math.floor(Math.min(width, height) / 250));
-
-  for (let y = 0; y < height; y += step) {
-    for (let x = 0; x < width; x += step) {
-      const i = (y * width + x) * 4;
-      const r = data[i], g = data[i+1], b = data[i+2];
-      // Blue/cyan screen heuristic, tolerant of glare.
-      const isScreen = (
-        b > 90 &&
-        g > 55 &&
-        b > r + 20 &&
-        (b + g) > 170
-      );
-      if (isScreen) {
-        count++;
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-  if (count < 200) return null;
-
-  const padX = Math.round((maxX - minX) * 0.08);
-  const padY = Math.round((maxY - minY) * 0.06);
-
-  minX = Math.max(0, minX - padX);
-  minY = Math.max(0, minY - padY);
-  maxX = Math.min(width, maxX + padX);
-  maxY = Math.min(height, maxY + padY);
-
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-}
-
-function equalizeAndDesaturate(source, contrast = 1.8) {
-  const c = document.createElement("canvas");
-  c.width = source.width;
-  c.height = source.height;
-  const ctx = c.getContext("2d");
-  ctx.drawImage(source, 0, 0);
-  const img = ctx.getImageData(0,0,c.width,c.height);
-  const d = img.data;
-
-  for (let i = 0; i < d.length; i += 4) {
-    const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-    let v = ((gray - 128) * contrast) + 128;
-    // Mild glare compression.
-    v = Math.max(0, Math.min(255, v > 235 ? 215 : v));
-    d[i] = d[i+1] = d[i+2] = v;
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-
-function thresholdCanvas(source, threshold = 150) {
-  const c = document.createElement("canvas");
-  c.width = source.width;
-  c.height = source.height;
-  const ctx = c.getContext("2d");
-  ctx.drawImage(source, 0, 0);
-  const img = ctx.getImageData(0,0,c.width,c.height);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const v = d[i] >= threshold ? 255 : 0;
-    d[i] = d[i+1] = d[i+2] = v;
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-
-function invertCanvas(source) {
-  const c = document.createElement("canvas");
-  c.width = source.width;
-  c.height = source.height;
-  const ctx = c.getContext("2d");
-  ctx.drawImage(source, 0, 0);
-  const img = ctx.getImageData(0,0,c.width,c.height);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    d[i] = 255 - d[i];
-    d[i+1] = 255 - d[i+1];
-    d[i+2] = 255 - d[i+2];
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-
-async function ocrDateTime(canvas) {
-  const result = await Tesseract.recognize(canvas, "eng", {
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-    tessedit_char_whitelist: "0123456789/: AMPMapm"
+  var canvas = $("ocrCanvas");
+  Tesseract.recognize(canvas, "eng", {
+    tessedit_pageseg_mode: 4,
+    tessedit_char_whitelist: "0123456789./: AMPMapm"
+  }).then(function(result) {
+    $("ocrBtn").disabled = false;
+    var text = (result.data && result.data.text) ? result.data.text : "";
+    $("rawText").value = text;
+    parseOCR(text);
+    setStatus("OCR complete. Review values before saving.", false);
+  }).catch(function(err) {
+    $("ocrBtn").disabled = false;
+    console.log(err);
+    setStatus("OCR failed.", true);
   });
-  return {
-    kind: "datetime",
-    raw: result.data.text || "",
-    parsed: parseDateTime(result.data.text || "")
-  };
 }
 
-async function ocrNumericColumn(canvas) {
-  const result = await Tesseract.recognize(canvas, "eng", {
-    tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN,
-    tessedit_char_whitelist: "0123456789. "
-  });
-  return result.data.text || "";
+function cleanToken(s) {
+  s = String(s || "").replace(/,/g,".").replace(/[^0-9.]/g,"");
+  var parts = s.split(".");
+  if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
+  return s;
 }
 
-function parseDateTime(text) {
-  const compact = text.replace(/\s+/g, " ").trim();
-  const dateMatch = compact.match(/(\d{2}\/\d{2}\/\d{2})/);
-  const timeMatch = compact.match(/(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/i);
-  return {
-    date: dateMatch ? dateMatch[1] : "",
-    time: timeMatch ? timeMatch[1].replace(/\s+/g, " ").toUpperCase() : ""
-  };
-}
+function parseOCR(text) {
+  var dateMatch = text.match(/\d{2}\/\d{2}\/\d{2}/);
+  if (dateMatch) $("date").value = dateMatch[0];
+  var timeMatch = text.match(/\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM)?/i);
+  if (timeMatch) $("time").value = timeMatch[0];
 
-function cleanNumericToken(s) {
-  if (!s) return "";
-  let t = s.trim()
-    .replace(/,/g, ".")
-    .replace(/[Oo]/g, "0")
-    .replace(/[Il|]/g, "1")
-    .replace(/[Ss]/g, "5")
-    .replace(/[^0-9.]/g, "");
-  const parts = t.split(".");
-  if (parts.length > 2) t = parts.shift() + "." + parts.join("");
-  return t;
-}
-
-function extractCandidateNumbers(raw) {
-  let lines = raw
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(cleanNumericToken)
-    .filter(Boolean);
-
-  // Flatten any line that still contains multiple numbers.
-  const flat = [];
-  for (const line of lines) {
-    const matches = line.match(/\d+(?:\.\d+)?/g);
-    if (matches) flat.push(...matches);
+  var lines = text.split(/\n/);
+  var nums = [];
+  for (var i=0;i<lines.length;i++) {
+    var found = lines[i].match(/\d+(?:\.\d+)?/g);
+    if (found) {
+      for (var j=0;j<found.length;j++) nums.push(cleanToken(found[j]));
+    }
   }
-  return flat;
-}
 
-function normalizeByOrder(nums) {
-  // Expected order on YSI numeric column:
+  // expected numeric order from YSI screen
   // 0 temp, 1 pressure(ignore), 2 do%, 3 do mg/L, 4 cond, 5 salinity, 6 pH, 7 turb, 8 depth
-  const out = {
-    temp: "", cond: "", salinity: "", do_mg: "", do_pct: "", ph: "", turb: "", ocrDepth: ""
-  };
-  if (nums.length < 4) return out;
-
-  const padded = nums.slice(0, 12).map(n => n.trim());
-
-  function parseAt(idx) {
-    return padded[idx] || "";
-  }
-
-  // Map by position if available.
-  const temp = parseAt(0);
-  const doPct = parseAt(2);
-  const doMg = parseAt(3);
-  const cond = parseAt(4);
-  const sal = parseAt(5);
-  const ph = parseAt(6);
-  const turb = parseAt(7);
-  const depth = parseAt(8);
-
-  Object.assign(out, {
-    temp: plausibility("temp", temp),
-    do_pct: plausibility("do_pct", doPct),
-    do_mg: plausibility("do_mg", doMg),
-    cond: plausibility("cond", cond),
-    salinity: plausibility("salinity", sal),
-    ph: plausibility("ph", ph),
-    turb: plausibility("turb", turb),
-    ocrDepth: plausibility("ocrDepth", depth),
-  });
-
-  return out;
+  if (nums.length > 0) $("temp").value = fixRange("temp", nums[0]);
+  if (nums.length > 2) $("do_pct").value = fixRange("do_pct", nums[2]);
+  if (nums.length > 3) $("do_mg").value = fixRange("do_mg", nums[3]);
+  if (nums.length > 4) $("cond").value = fixRange("cond", nums[4]);
+  if (nums.length > 5) $("salinity").value = fixRange("salinity", nums[5]);
+  if (nums.length > 6) $("ph").value = fixRange("ph", nums[6]);
+  if (nums.length > 7) $("turb").value = fixRange("turb", nums[7]);
+  if (nums.length > 8) $("ocrDepth").value = fixRange("ocrDepth", nums[8]);
 }
 
-function plausibility(field, value) {
-  if (!value) return "";
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "";
-
-  const ranges = {
-    temp: [0, 45],
-    do_pct: [0, 250],
-    do_mg: [0, 25],
-    cond: [0, 100000],
-    salinity: [0, 70],
-    ph: [0, 14],
-    turb: [0, 4000],
-    ocrDepth: [0, 100]
-  };
-  const [lo, hi] = ranges[field] || [-Infinity, Infinity];
-  if (n < lo || n > hi) return "";
-
-  // Fix common OCR scaling problems
-  if (field === "temp" && n > 100) {
-    if (n / 10 <= hi) return (n / 10).toFixed(1);
-    if (n / 100 <= hi) return (n / 100).toFixed(1);
+function fixRange(field, value) {
+  var n = parseFloat(value);
+  if (isNaN(n)) return "";
+  if (field === "temp") {
+    if (n > 100) n = n / 10;
+    if (n < 0 || n > 45) return "";
+    return n.toFixed(1);
   }
-  if (field === "do_pct" && n > 250 && n / 10 <= hi) return (n / 10).toFixed(1);
-  if (field === "do_mg" && n > 25 && n / 10 <= hi) return (n / 10).toFixed(2);
-  if (field === "ph" && n > 14 && n / 10 <= hi) return (n / 10).toFixed(2);
-  if (field === "salinity" && n > 70 && n / 100 <= hi) return (n / 100).toFixed(2);
-  if (field === "ocrDepth" && n > 10 && n / 1000 <= hi) return (n / 1000).toFixed(3);
-
+  if (field === "do_pct") {
+    if (n > 250) n = n / 10;
+    if (n < 0 || n > 250) return "";
+    return n.toFixed(1);
+  }
+  if (field === "do_mg") {
+    if (n > 25) n = n / 10;
+    if (n < 0 || n > 25) return "";
+    return n.toFixed(2);
+  }
+  if (field === "cond") {
+    if (n < 0 || n > 100000) return "";
+    return String(n);
+  }
+  if (field === "salinity") {
+    if (n > 70) n = n / 100;
+    if (n < 0 || n > 70) return "";
+    return n.toFixed(2);
+  }
+  if (field === "ph") {
+    if (n > 14) n = n / 10;
+    if (n < 0 || n > 14) return "";
+    return n.toFixed(2);
+  }
+  if (field === "turb") {
+    if (n < 0 || n > 4000) return "";
+    return n.toFixed(2);
+  }
+  if (field === "ocrDepth") {
+    if (n > 10) n = n / 1000;
+    if (n < 0 || n > 100) return "";
+    return n.toFixed(3);
+  }
   return String(n);
 }
 
-function parseNumericValues(raw) {
-  const nums = extractCandidateNumbers(raw);
-  return normalizeByOrder(nums);
-}
-
-function scoreParsed(parsed) {
-  let score = 0;
-  ["temp","cond","salinity","do_mg","do_pct","ph","turb"].forEach(k => {
-    if (parsed[k] !== "") score++;
-  });
-  return score;
-}
-
-function applyDateTime(dtAttempt) {
-  if (!dtAttempt || !dtAttempt.parsed) return;
-  if (dtAttempt.parsed.date) els.date.value = dtAttempt.parsed.date;
-  if (dtAttempt.parsed.time) els.time.value = dtAttempt.parsed.time;
-}
-
-function applyParsed(parsed) {
-  els.temp.value = parsed.temp || "";
-  els.cond.value = parsed.cond || "";
-  els.salinity.value = parsed.salinity || "";
-  els.do_mg.value = parsed.do_mg || "";
-  els.do_pct.value = parsed.do_pct || "";
-  els.ph.value = parsed.ph || "";
-  els.turb.value = parsed.turb || "";
-  els.ocrDepth.value = parsed.ocrDepth || "";
+function getDepthValue() {
+  if ($("depthSelect").value === "custom") return $("customDepth").value || "";
+  return "0.1";
 }
 
 function saveReading() {
-  const reading = {
-    site: els.site.value,
-    depth: getChosenDepth(),
-    date: els.date.value,
-    time: els.time.value,
-    temp: els.temp.value,
-    cond: els.cond.value,
-    salinity: els.salinity.value,
-    do_mg: els.do_mg.value,
-    do_pct: els.do_pct.value,
-    ph: els.ph.value,
-    turb: els.turb.value
+  var r = {
+    site: $("site").value,
+    depth: getDepthValue(),
+    date: $("date").value,
+    time: $("time").value,
+    temp: $("temp").value,
+    cond: $("cond").value,
+    salinity: $("salinity").value,
+    do_mg: $("do_mg").value,
+    do_pct: $("do_pct").value,
+    ph: $("ph").value,
+    turb: $("turb").value
   };
-  savedReadings.push(reading);
+  savedReadings.push(r);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(savedReadings));
-  renderSavedTable();
-  setStatus("Reading saved.", "good");
+  renderSaved();
+  setStatus("Reading saved.", false);
 }
 
-function loadSavedReadings() {
+function loadSaved() {
   try {
     savedReadings = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    if (!Array.isArray(savedReadings)) savedReadings = [];
-  } catch {
+    if (!savedReadings || !savedReadings.length) savedReadings = [];
+  } catch(e) {
     savedReadings = [];
   }
 }
 
-function renderSavedTable() {
-  const tbody = document.querySelector("#savedTable tbody");
-  tbody.innerHTML = "";
-  savedReadings.forEach(r => {
-    const tr = document.createElement("tr");
-    ["site","depth","date","time","temp","cond","salinity","do_mg","do_pct","ph","turb"].forEach(key => {
-      const td = document.createElement("td");
-      td.textContent = r[key] ?? "";
+function renderSaved() {
+  var body = $("savedBody");
+  body.innerHTML = "";
+  for (var i=0;i<savedReadings.length;i++) {
+    var r = savedReadings[i];
+    var tr = document.createElement("tr");
+    var cols = ["site","depth","date","time","temp","cond","salinity","do_mg","do_pct","ph","turb"];
+    for (var j=0;j<cols.length;j++) {
+      var td = document.createElement("td");
+      td.textContent = r[cols[j]] || "";
       tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
+    }
+    body.appendChild(tr);
+  }
 }
 
 function exportExcel() {
   if (!savedReadings.length) {
-    setStatus("No saved readings to export.", "bad");
+    setStatus("No saved readings to export.", true);
     return;
   }
-
-  const rows = savedReadings.map(r => ({
-    Date: r.date || "",
-    Personnel1: "",
-    Personnel2: "",
-    Weather: "",
-    Rain: "",
-    Creek: (SITE_OPTIONS.find(s => s.site === r.site) || {creek:""}).creek,
-    Site: r.site || "",
-    Time: r.time || "",
-    Depth: r.depth || "",
-    "Temp.": r.temp || "",
-    "Cond.": r.cond || "",
-    Salinity: r.salinity || "",
-    "DO mg/L": r.do_mg || "",
-    "DO%": r.do_pct || "",
-    pH: r.ph || "",
-    Turb: r.turb || "",
-    "Entero.": "",
-    "Chl-A": ""
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(rows, {
-    header: ["Date","Personnel1","Personnel2","Weather","Rain","Creek","Site","Time","Depth","Temp.","Cond.","Salinity","DO mg/L","DO%","pH","Turb","Entero.","Chl-A"]
-  });
-  const wb = XLSX.utils.book_new();
+  var rows = [];
+  for (var i=0;i<savedReadings.length;i++) {
+    var r = savedReadings[i];
+    rows.push({
+      "Date": r.date || "",
+      "Personnel1": "",
+      "Personnel2": "",
+      "Weather": "",
+      "Rain": "",
+      "Creek": CREEK_MAP[r.site] || "",
+      "Site": r.site || "",
+      "Time": r.time || "",
+      "Depth": r.depth || "",
+      "Temp.": r.temp || "",
+      "Cond.": r.cond || "",
+      "Salinity": r.salinity || "",
+      "DO mg/L": r.do_mg || "",
+      "DO%": r.do_pct || "",
+      "pH": r.ph || "",
+      "Turb": r.turb || "",
+      "Entero.": "",
+      "Chl-A": ""
+    });
+  }
+  var ws = XLSX.utils.json_to_sheet(rows);
+  var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
   XLSX.writeFile(wb, "YSI_Water_Quality_Data.xlsx");
-  setStatus("Excel file exported.", "good");
+  setStatus("Excel exported.", false);
 }
+
+init();
 </script>
 </body>
 </html>
