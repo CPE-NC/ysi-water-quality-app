@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YSI Logger v7</title>
+<title>YSI Water Quality Logger</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <style>
@@ -11,7 +11,7 @@ body{font-family:Arial,sans-serif;background:#f5f7fa;margin:0;padding:16px;color
 .card{background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:14px;margin:0 auto 14px;max-width:900px}
 h1,h2{margin:0 0 12px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
 label{display:block;font-weight:700;margin:0 0 6px}
 input,select,button,textarea{width:100%;padding:12px;border:1px solid #cfd6e0;border-radius:10px;font-size:16px;box-sizing:border-box}
 button{background:#0b65c2;color:#fff;border:none;font-weight:700}
@@ -20,8 +20,8 @@ img,canvas{width:100%;border:1px solid #cfd6e0;border-radius:10px;background:#ff
 .small{font-size:14px;color:#555;line-height:1.35}
 .status{margin-top:10px;font-weight:700}
 .row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-@media(max-width:800px){.row{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:480px){.row{grid-template-columns:1fr}}
+@media(max-width:900px){.row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.row{grid-template-columns:1fr}}
 .table-wrap{overflow:auto;max-height:260px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}
@@ -30,8 +30,9 @@ th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}
 </head>
 <body>
 <div class="card">
-<div class="version">v7 cache-bust rebuild</div>
+<div class="version">v8 centered numeric-column OCR</div>
 <h1>YSI Water Quality Logger</h1>
+
 <div class="grid">
   <div>
     <label for="site">Site</label>
@@ -45,23 +46,37 @@ th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}
     </select>
   </div>
 </div>
+
 <div id="customDepthWrap" style="display:none;margin-top:12px;">
   <label for="customDepth">Custom depth (ft)</label>
   <input id="customDepth" type="number" step="0.01" placeholder="Enter custom depth">
 </div>
+
 <div class="grid" style="margin-top:12px;">
   <div><label for="date">Date</label><input id="date"></div>
   <div><label for="time">Time</label><input id="time"></div>
 </div>
+
 <div style="margin-top:12px;">
   <label for="photo">YSI photo</label>
   <input id="photo" type="file" accept="image/*" capture="environment">
 </div>
+
 <div class="grid" style="margin-top:12px;">
-  <div><img id="preview" alt="preview"></div>
-  <div><canvas id="ocrCanvas"></canvas></div>
+  <div>
+    <div class="small" style="margin-bottom:6px;"><b>Original photo</b></div>
+    <img id="preview" alt="preview">
+  </div>
+  <div>
+    <div class="small" style="margin-bottom:6px;"><b>OCR target</b> (centered crop, numeric column only)</div>
+    <canvas id="ocrCanvas"></canvas>
+  </div>
 </div>
-<div class="small" style="margin-top:10px;">This version should visibly show sites in the dropdown and reveal a custom depth box when you choose Custom. The photo preview should appear immediately after image selection.</div>
+
+<div class="small" style="margin-top:10px;">
+This version ignores the outer device body and crops tightly toward the center display and left numeric column before OCR. Try to keep the YSI screen centered and as square as possible.
+</div>
+
 <div class="grid" style="margin-top:12px;">
   <div><button id="ocrBtn" type="button">Run OCR on selected photo</button></div>
   <div><button id="clearBtn" class="secondary" type="button">Clear form</button></div>
@@ -108,9 +123,10 @@ th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}
 <script>
 var SITE_OPTIONS = ["LC-RR", "BC-CBR", "MOT-CBR", "MOT-ND", "PG-ML", "PG-CH", "PG-NC", "SC-CH", "SC-CD", "SC-NK", "SC-GR", "IC-HS", "IC-SID", "FC-4", "FC-6", "FC-13", "FC-FOY", "PC-BDUS", "PC-BDDS", "PC-M"];
 var CREEK_MAP = {"LC-RR": "Lords", "BC-CBR": "Barnard", "MOT-CBR": "Motts", "MOT-ND": "Motts", "PG-ML": "Prince Georges", "PG-CH": "Prince Georges", "PG-NC": "Prince Georges", "SC-CH": "Smith", "SC-CD": "Smith", "SC-NK": "Smith", "SC-GR": "Smith", "IC-HS": "Island", "IC-SID": "Island", "FC-4": "Futch", "FC-6": "Futch", "FC-13": "Futch", "FC-FOY": "Futch", "PC-BDUS": "Pages", "PC-BDDS": "Pages", "PC-M": "Pages"};
-var STORAGE_KEY = "ysi_logger_v7";
+var STORAGE_KEY = "ysi_logger_v8";
 var originalImgSrc = "";
 var savedReadings = [];
+var currentCanvasReady = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -131,8 +147,8 @@ function init() {
     reader.onload = function(evt) {
       originalImgSrc = evt.target.result;
       $("preview").src = originalImgSrc;
-      setStatus("Photo loaded. Run OCR when ready.", false);
-      preprocessForDisplay(originalImgSrc);
+      setStatus("Photo loaded. OCR target generated below.", false);
+      buildOcrTarget(originalImgSrc);
     };
     reader.readAsDataURL(file);
   };
@@ -168,63 +184,80 @@ function setStatus(msg, isError) {
   $("status").style.color = isError ? "#b42318" : "#027a48";
 }
 
+function clearNumericFields() {
+  var ids = ["temp","cond","salinity","do_mg","do_pct","ph","turb","ocrDepth","rawText"];
+  for (var i=0;i<ids.length;i++) $(ids[i]).value = "";
+}
+
 function clearForm() {
   $("photo").value = "";
   $("preview").src = "";
+  clearNumericFields();
   var c = $("ocrCanvas");
   var ctx = c.getContext("2d");
   ctx.clearRect(0,0,c.width,c.height);
-  $("rawText").value = "";
-  var ids = ["temp","cond","salinity","do_mg","do_pct","ph","turb","ocrDepth"];
-  for (var i=0;i<ids.length;i++) $(ids[i]).value = "";
+  currentCanvasReady = false;
   setDefaults();
   setStatus("Form cleared.", false);
 }
 
-function preprocessForDisplay(src) {
+function buildOcrTarget(src) {
+  currentCanvasReady = false;
   var img = new Image();
   img.onload = function() {
-    var canvas = $("ocrCanvas");
-    var ctx = canvas.getContext("2d");
+    // Step 1: aggressive center crop to the screen area
     var w = img.width, h = img.height;
-    canvas.width = w;
-    canvas.height = h;
-    ctx.drawImage(img,0,0);
+    var sx = Math.round(w * 0.28);
+    var sy = Math.round(h * 0.12);
+    var sw = Math.round(w * 0.34);
+    var sh = Math.round(h * 0.64);
 
-    // center crop toward screen
-    var sx = Math.round(w * 0.22);
-    var sy = Math.round(h * 0.05);
-    var sw = Math.round(w * 0.56);
-    var sh = Math.round(h * 0.80);
+    var base = document.createElement("canvas");
+    base.width = sw;
+    base.height = sh;
+    var bctx = base.getContext("2d");
+    bctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 
-    var temp = document.createElement("canvas");
-    temp.width = sw;
-    temp.height = sh;
-    var tctx = temp.getContext("2d");
-    tctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    // Step 2: left numeric column only
+    var nx = Math.round(sw * 0.04);
+    var ny = Math.round(sh * 0.22);
+    var nw = Math.round(sw * 0.42);
+    var nh = Math.round(sh * 0.72);
 
-    // grayscale + contrast
-    var imgData = tctx.getImageData(0,0,sw,sh);
+    var num = document.createElement("canvas");
+    num.width = nw;
+    num.height = nh;
+    var nctx = num.getContext("2d");
+    nctx.drawImage(base, nx, ny, nw, nh, 0, 0, nw, nh);
+
+    // Step 3: enlarge strongly
+    var out = $("ocrCanvas");
+    out.width = nw * 3;
+    out.height = nh * 3;
+    var octx = out.getContext("2d");
+    octx.imageSmoothingEnabled = false;
+    octx.drawImage(num, 0, 0, out.width, out.height);
+
+    // Step 4: grayscale + contrast + mild threshold to fight glare
+    var imgData = octx.getImageData(0,0,out.width,out.height);
     var d = imgData.data;
     for (var i=0;i<d.length;i+=4) {
       var gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-      var v = ((gray - 128) * 1.9) + 128;
-      if (v > 235) v = 215;
-      if (v < 0) v = 0;
+      var v = ((gray - 128) * 2.4) + 128;
+      if (v > 210) v = 255;
+      if (v < 95) v = 0;
       if (v > 255) v = 255;
+      if (v < 0) v = 0;
       d[i]=d[i+1]=d[i+2]=v;
     }
-    tctx.putImageData(imgData,0,0);
-
-    canvas.width = sw;
-    canvas.height = sh;
-    ctx.drawImage(temp,0,0);
+    octx.putImageData(imgData,0,0);
+    currentCanvasReady = true;
   };
   img.src = src;
 }
 
 function runOCR() {
-  if (!originalImgSrc) {
+  if (!originalImgSrc || !currentCanvasReady) {
     setStatus("Select a photo first.", true);
     return;
   }
@@ -234,7 +267,7 @@ function runOCR() {
   var canvas = $("ocrCanvas");
   Tesseract.recognize(canvas, "eng", {
     tessedit_pageseg_mode: 4,
-    tessedit_char_whitelist: "0123456789./: AMPMapm"
+    tessedit_char_whitelist: "0123456789."
   }).then(function(result) {
     $("ocrBtn").disabled = false;
     var text = (result.data && result.data.text) ? result.data.text : "";
@@ -253,33 +286,6 @@ function cleanToken(s) {
   var parts = s.split(".");
   if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
   return s;
-}
-
-function parseOCR(text) {
-  var dateMatch = text.match(/\d{2}\/\d{2}\/\d{2}/);
-  if (dateMatch) $("date").value = dateMatch[0];
-  var timeMatch = text.match(/\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM)?/i);
-  if (timeMatch) $("time").value = timeMatch[0];
-
-  var lines = text.split(/\n/);
-  var nums = [];
-  for (var i=0;i<lines.length;i++) {
-    var found = lines[i].match(/\d+(?:\.\d+)?/g);
-    if (found) {
-      for (var j=0;j<found.length;j++) nums.push(cleanToken(found[j]));
-    }
-  }
-
-  // expected numeric order from YSI screen
-  // 0 temp, 1 pressure(ignore), 2 do%, 3 do mg/L, 4 cond, 5 salinity, 6 pH, 7 turb, 8 depth
-  if (nums.length > 0) $("temp").value = fixRange("temp", nums[0]);
-  if (nums.length > 2) $("do_pct").value = fixRange("do_pct", nums[2]);
-  if (nums.length > 3) $("do_mg").value = fixRange("do_mg", nums[3]);
-  if (nums.length > 4) $("cond").value = fixRange("cond", nums[4]);
-  if (nums.length > 5) $("salinity").value = fixRange("salinity", nums[5]);
-  if (nums.length > 6) $("ph").value = fixRange("ph", nums[6]);
-  if (nums.length > 7) $("turb").value = fixRange("turb", nums[7]);
-  if (nums.length > 8) $("ocrDepth").value = fixRange("ocrDepth", nums[8]);
 }
 
 function fixRange(field, value) {
@@ -324,6 +330,31 @@ function fixRange(field, value) {
     return n.toFixed(3);
   }
   return String(n);
+}
+
+function parseOCR(text) {
+  clearNumericFields();
+  $("rawText").value = text;
+
+  var nums = [];
+  var lines = text.split(/\n/);
+  for (var i=0;i<lines.length;i++) {
+    var found = lines[i].match(/\d+(?:\.\d+)?/g);
+    if (found) {
+      for (var j=0;j<found.length;j++) nums.push(cleanToken(found[j]));
+    }
+  }
+
+  // Expected order in numeric column crop:
+  // temp, pressure(ignore), do_pct, do_mg, cond, salinity, ph, turb, depth
+  if (nums.length > 0) $("temp").value = fixRange("temp", nums[0]);
+  if (nums.length > 2) $("do_pct").value = fixRange("do_pct", nums[2]);
+  if (nums.length > 3) $("do_mg").value = fixRange("do_mg", nums[3]);
+  if (nums.length > 4) $("cond").value = fixRange("cond", nums[4]);
+  if (nums.length > 5) $("salinity").value = fixRange("salinity", nums[5]);
+  if (nums.length > 6) $("ph").value = fixRange("ph", nums[6]);
+  if (nums.length > 7) $("turb").value = fixRange("turb", nums[7]);
+  if (nums.length > 8) $("ocrDepth").value = fixRange("ocrDepth", nums[8]);
 }
 
 function getDepthValue() {
