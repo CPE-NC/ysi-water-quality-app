@@ -1,643 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>YSI Water Quality Logger</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-    :root {
-      --bg: #f5f7fb;
-      --card: #ffffff;
-      --text: #10233a;
-      --muted: #5d6b82;
-      --line: #d7deea;
-      --accent: #0f6fb5;
-      --accent2: #0d9a6b;
-      --danger: #c43c3c;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-    .wrap {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-    h1 {
-      margin: 0 0 8px;
-      font-size: 1.6rem;
-    }
-    p, label, button, select, input, textarea { font-size: 16px; }
-    .muted { color: var(--muted); }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-      margin: 12px 0;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-    }
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    select, input[type="text"], input[type="date"], input[type="time"], input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #fff;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-    button {
-      border: 0;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .primary { background: var(--accent); color: white; }
-    .secondary { background: #eef4fb; color: var(--text); }
-    .success { background: var(--accent2); color: white; }
-    .danger { background: #fbe8e8; color: var(--danger); }
-    .status {
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #eef4fb;
-      color: var(--text);
-      min-height: 44px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-    th, td {
-      text-align: left;
-      border-bottom: 1px solid var(--line);
-      padding: 8px 6px;
-      vertical-align: top;
-    }
-    th {
-      position: sticky;
-      top: 0;
-      background: white;
-    }
-    .table-wrap {
-      overflow: auto;
-      max-height: 420px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    .metric-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .metric {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
-      background: #fafcff;
-    }
-    .metric .k {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    .metric input {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
-    }
-    img.preview {
-      width: 100%;
-      max-height: 280px;
-      object-fit: contain;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: #f8fafc;
-    }
-    .small { font-size: 13px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YSI Water Quality Logger</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+body { font-family: Arial; padding: 15px; }
+input, select, button { margin: 5px 0; padding: 8px; width: 100%; }
+.preview { max-width: 100%; margin-top: 10px; }
+.box { margin-top: 15px; padding: 10px; border: 1px solid #ccc; }
+textarea { width:100%; height:120px; }
+</style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h1>YSI Water Quality Logger</h1>
-    <p class="muted">Capture a photo of the YSI screen, assign it to the correct site/depth row, review the parsed values, and export the populated spreadsheet.</p>
 
-    <div class="card">
-      <div class="grid">
-        <div>
-          <label for="surveyDate">Survey date</label>
-          <input id="surveyDate" type="date" />
-        </div>
-        <div>
-          <label for="siteSelect">Site</label>
-          <select id="siteSelect"></select>
-        </div>
-        <div>
-          <label for="depthSelect">Depth row</label>
-          <select id="depthSelect"></select>
-        </div>
-      </div>
-      <div class="actions">
-        <label class="secondary" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 16px;border-radius:12px;cursor:pointer;">
-          Take / choose photo
-          <input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
-        </label>
-        <button id="runOcrBtn" class="primary" type="button">Run OCR on selected photo</button>
-        <button id="saveBtn" class="success" type="button">Save reading</button>
-      </div>
-      <div style="margin-top:12px;" class="status" id="statusBox">Ready.</div>
-      <div style="margin-top:12px;">
-        <img id="imagePreview" class="preview" alt="Selected YSI image preview" />
-      </div>
-      <div class="small muted" style="margin-top:8px;">Tip: after OCR runs, review every value before saving. Safari can do this, but OCR may take several seconds on phone.</div>
-      <div style="margin-top:12px;">
-        <label for="rawOcrText">Raw OCR text</label>
-        <textarea id="rawOcrText" rows="8" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;"></textarea>
-      </div>
-    </div>
+<h2>YSI Logger</h2>
 
-    <div class="card">
-      <h2 style="margin-top:0;font-size:1.15rem;">Parsed values</h2>
-      <div class="metric-grid" id="metricGrid"></div>
-      <div class="small muted" style="margin-top:8px;">Barometric pressure is intentionally ignored because it is not used in your spreadsheet template.</div>
-    </div>
+<label>Site</label>
+<input id="site" placeholder="Enter site">
 
-    <div class="card">
-      <div class="actions" style="margin-top:0;">
-        <button id="exportBtn" class="primary" type="button">Download Excel</button>
-        <button id="clearBtn" class="danger" type="button">Clear saved readings</button>
-      </div>
-      <p class="muted small">The exported workbook follows your uploaded template structure. Personnel, weather, and rain stay blank for manual entry later.</p>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Site</th>
-              <th>Depth row</th>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Temp</th>
-              <th>Cond</th>
-              <th>Salinity</th>
-              <th>DO mg/L</th>
-              <th>DO%</th>
-              <th>pH</th>
-              <th>Turb</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="recordsBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+<label>Depth</label>
+<select id="depthSelect" onchange="toggleDepthInput()">
+<option value="0.1">0.1 ft</option>
+<option value="custom">Custom</option>
+</select>
+
+<input id="customDepth" placeholder="Enter depth" style="display:none">
+
+<input type="file" accept="image/*" onchange="loadImage(event)">
+<img id="preview" class="preview"/>
+
+<button onclick="runOCR()">Run OCR</button>
+
+<div class="box">
+<h3>Parsed Values</h3>
+
+<input id="date" placeholder="Date">
+<input id="time" placeholder="Time">
+<input id="temp" placeholder="Temp">
+<input id="cond" placeholder="Conductivity">
+<input id="sal" placeholder="Salinity">
+<input id="do_mg" placeholder="DO mg/L">
+<input id="do_pct" placeholder="DO %">
+<input id="ph" placeholder="pH">
+<input id="turb" placeholder="Turb">
+
+</div>
+
+<div class="box">
+<h3>Raw OCR Text</h3>
+<textarea id="rawText"></textarea>
+</div>
+
+<button onclick="saveReading()">Save Reading</button>
+<button onclick="exportExcel()">Export Excel</button>
 
 <script>
-const TEMPLATE = {"headers":["Date","Personnel","Personnel_2","Weather","Rain","Creek","Site","Time","Depth ","Temp.","Cond.","Salinity","DO mg/L","DO%","pH","Turb","Entero.","Chl-A"],"rows":[{"Date":"04/09/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Lords","Site":"LC-RR","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/09/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Lords","Site":"LC-RR","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/09/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Barnard","Site":"BC-CBR","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/09/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Barnard","Site":"BC-CBR","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/09/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Motts","Site":"MOT-CBR","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/09/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Motts","Site":"MOT-ND","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Prince Georges","Site":"PG-ML","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Prince Georges","Site":"PG-CH","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Prince Georges","Site":"PG-CH","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Prince Georges","Site":"PG-NC","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Prince Georges","Site":"PG-NC","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Smith","Site":"SC-CH","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Smith","Site":"SC-CH","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Smith","Site":"SC-CD","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Smith","Site":"SC-NK","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Smith","Site":"SC-NK","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Smith","Site":"SC-GR","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Island","Site":"IC-HS","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Island","Site":"IC-HS","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Island","Site":"IC-SID","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/10/17","Personnel":"Brad Rosov","Personnel_2":null,"Weather":null,"Rain":null,"Creek":"Island","Site":"IC-SID","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-4","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-4","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-6","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-6","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-13","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-13","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-FOY","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Futch","Site":"FC-FOY","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Pages","Site":"PC-BDUS","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Pages","Site":"PC-BDDS","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Pages","Site":"PC-M","Time":null,"Depth ":0.1,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":null,"Chl-A":null},{"Date":"04/11/17","Personnel":"Brad Rosov","Personnel_2":"Summer Owens","Weather":null,"Rain":null,"Creek":"Pages","Site":"PC-M","Time":null,"Depth ":null,"Temp.":null,"Cond.":null,"Salinity":null,"DO mg/L":null,"DO%":null,"pH":null,"Turb":null,"Entero.":"N/A","Chl-A":"N/A"}]};
-const STORAGE_KEY = "ysi-water-quality-records-v1";
+let readings = [];
+let imageData = null;
 
-const state = {
-  sites: [],
-  selectedImageDataUrl: "",
-  records: [],
-  parsed: {
-    timestamp: "",
-    date: "",
-    time: "",
-    temp: "",
-    cond: "",
-    salinity: "",
-    doMgL: "",
-    doPct: "",
-    ph: "",
-    turb: ""
-  }
+function toggleDepthInput(){
+let val = document.getElementById("depthSelect").value;
+document.getElementById("customDepth").style.display =
+(val === "custom") ? "block" : "none";
+}
+
+function loadImage(e){
+const file = e.target.files[0];
+const reader = new FileReader();
+reader.onload = function(){
+document.getElementById("preview").src = reader.result;
+imageData = reader.result;
+};
+reader.readAsDataURL(file);
+}
+
+async function runOCR(){
+if(!imageData) return alert("Upload image first");
+
+let result = await Tesseract.recognize(imageData, 'eng');
+let text = result.data.text;
+document.getElementById("rawText").value = text;
+
+parseText(text);
+}
+
+function parseText(text){
+
+function find(regex){
+let m = text.match(regex);
+return m ? m[1] : "";
+}
+
+document.getElementById("temp").value = find(/(\d+\.\d)\s*°?C/);
+document.getElementById("cond").value = find(/(\d+)\s*µS/);
+document.getElementById("sal").value = find(/(\d+\.\d+)\s*S/);
+document.getElementById("do_pct").value = find(/(\d+\.\d)\s*%/);
+document.getElementById("do_mg").value = find(/(\d+\.\d+)\s*mg/);
+document.getElementById("ph").value = find(/(\d+\.\d)\s*pH/);
+document.getElementById("turb").value = find(/(\d+\.\d+)\s*NTU/);
+
+let dt = text.match(/(\d{2}\/\d{2}\/\d{2}).*(\d{1,2}:\d{2}:\d{2})/);
+if(dt){
+document.getElementById("date").value = dt[1];
+document.getElementById("time").value = dt[2];
+}
+}
+
+function getDepth(){
+let d = document.getElementById("depthSelect").value;
+return d === "custom" ? document.getElementById("customDepth").value : d;
+}
+
+function saveReading(){
+let r = {
+site: document.getElementById("site").value,
+depth: getDepth(),
+date: document.getElementById("date").value,
+time: document.getElementById("time").value,
+temp: document.getElementById("temp").value,
+cond: document.getElementById("cond").value,
+sal: document.getElementById("sal").value,
+do_mg: document.getElementById("do_mg").value,
+do_pct: document.getElementById("do_pct").value,
+ph: document.getElementById("ph").value,
+turb: document.getElementById("turb").value
 };
 
-function setStatus(msg) {
-  document.getElementById("statusBox").textContent = msg;
+readings.push(r);
+alert("Saved");
 }
 
-function mmddyyFromIso(iso) {
-  if (!iso) return "";
-  const [y,m,d] = iso.split("-");
-  return `${m}/${d}/${String(y).slice(-2)}`;
+function exportExcel(){
+let ws = XLSX.utils.json_to_sheet(readings);
+let wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, "Data");
+XLSX.writeFile(wb, "YSI_Data.xlsx");
 }
-
-function formatTimeFromDateObj(dt) {
-  return dt.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit', second: '2-digit'});
-}
-
-function normalizeText(text) {
-  return (text || "")
-    .replace(/[|]/g, "1")
-    .replace(/[Oo](?=\d)/g, "0")
-    .replace(/[,]/g, ".")
-    .replace(/ /g, " ")
-    .replace(/mg1L/gi, "mg/L")
-    .replace(/mq\/L/gi, "mg/L")
-    .replace(/mghL/gi, "mg/L")
-    .replace(/DO\.\s*%/gi, "DO %")
-    .replace(/SAL[-\s]*ppt/gi, "SAL ppt")
-    .replace(/u5/gi, "uS")
-    .replace(/μS/gi, "uS")
-    .replace(/µS/gi, "uS")
-    .replace(/
-/g, "
-");
-}
-
-function cleanNumeric(value) {
-  if (!value) return "";
-  const v = String(value).replace(/[^0-9.\-]/g, "");
-  const parts = v.split(".");
-  if (parts.length <= 2) return v;
-  return parts[0] + "." + parts.slice(1).join("");
-}
-
-function matchValue(text, patterns) {
-  for (const pattern of patterns) {
-    const m = text.match(pattern);
-    if (m && m[1]) return cleanNumeric(m[1]);
-  }
-  return "";
-}
-
-function parseLabeledLines(text) {
-  const compact = text.replace(/
-+/g, " ");
-  return {
-    temp: matchValue(compact, [/(\d+(?:\.\d+)?)\s*°?\s*C/i]),
-    cond: matchValue(compact, [/(\d+(?:\.\d+)?)\s*SPC/i, /(\d+(?:\.\d+)?)\s*(?:uS|US)\s*\/?\s*cm/i]),
-    salinity: matchValue(compact, [/(\d+(?:\.\d+)?)\s*SAL/i, /(\d+(?:\.\d+)?)\s*ppt/i]),
-    doMgL: matchValue(compact, [/(\d+(?:\.\d+)?)\s*DO\s*(?:mg\/?L)/i, /(\d+(?:\.\d+)?)\s*mg\/?L/i]),
-    doPct: matchValue(compact, [/(\d+(?:\.\d+)?)\s*DO\s*%/i, /(\d+(?:\.\d+)?)\s*%/i]),
-    ph: matchValue(compact, [/(\d+(?:\.\d+)?)\s*pH/i]),
-    turb: matchValue(compact, [/(\d+(?:\.\d+)?)\s*NTU/i])
-  };
-}
-
-function parseByOrder(text) {
-  const lines = text.split(/
-+/).map(s => s.trim()).filter(Boolean);
-  const nums = [];
-  for (const line of lines) {
-    const m = line.match(/^([0-9]+(?:\.[0-9]+)?)/);
-    if (m) nums.push(cleanNumeric(m[1]));
-  }
-  return {
-    temp: nums[0] || "",
-    doPct: nums[2] || "",
-    doMgL: nums[3] || "",
-    cond: nums[4] || "",
-    salinity: nums[5] || "",
-    ph: nums[6] || "",
-    turb: nums[7] || ""
-  };
-}
-
-function parseYsiText(rawText) {
-  const text = normalizeText(rawText);
-  const dtMatch = text.match(/(\d{2}\/\d{2}\/\d{2})\s+(\d{1,2}:\d{2}:\d{2}\s*[AP]M)/i);
-  const labeled = parseLabeledLines(text);
-  const ordered = parseByOrder(text);
-  const parsed = {
-    timestamp: dtMatch ? `${dtMatch[1]} ${dtMatch[2].toUpperCase()}` : "",
-    date: dtMatch ? dtMatch[1] : "",
-    time: dtMatch ? dtMatch[2].toUpperCase() : "",
-    temp: labeled.temp || ordered.temp || "",
-    cond: labeled.cond || ordered.cond || "",
-    salinity: labeled.salinity || ordered.salinity || "",
-    doMgL: labeled.doMgL || ordered.doMgL || "",
-    doPct: labeled.doPct || ordered.doPct || "",
-    ph: labeled.ph || ordered.ph || "",
-    turb: labeled.turb || ordered.turb || ""
-  };
-  return parsed;
-}
-
-async function preprocessImage(dataUrl) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 1600;
-      const scale = Math.min(1, maxW / img.width);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = imageData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-        const boosted = gray > 140 ? 255 : gray < 80 ? 0 : gray;
-        d[i] = d[i+1] = d[i+2] = boosted;
-      }
-      ctx.putImageData(imageData, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.src = dataUrl;
-  });
-}
-
-function buildSites() {
-  const bySite = new Map();
-  TEMPLATE.rows.forEach((row, idx) => {
-    const site = row["Site"];
-    const creek = row["Creek"];
-    const rawDepth = row["Depth "];
-    const label = rawDepth === 0.1 ? "0.1 ft" : (rawDepth ? `${rawDepth} ft` : "Deep / second row");
-    if (!bySite.has(site)) bySite.set(site, {site, creek, options: []});
-    bySite.get(site).options.push({
-      rowIndex: idx,
-      label,
-      rawDepth: rawDepth ?? ""
-    });
-  });
-  state.sites = Array.from(bySite.values()).sort((a,b) => a.site.localeCompare(b.site));
-}
-
-function populateSiteSelect() {
-  const siteSelect = document.getElementById("siteSelect");
-  siteSelect.innerHTML = "";
-  state.sites.forEach((item, i) => {
-    const opt = document.createElement("option");
-    opt.value = item.site;
-    opt.textContent = `${item.site} (${item.creek})`;
-    if (i === 0) opt.selected = true;
-    siteSelect.appendChild(opt);
-  });
-  refreshDepthSelect();
-}
-
-function refreshDepthSelect() {
-  const site = document.getElementById("siteSelect").value;
-  const siteInfo = state.sites.find(s => s.site === site);
-  const depthSelect = document.getElementById("depthSelect");
-  depthSelect.innerHTML = "";
-  (siteInfo?.options || []).forEach((opt, i) => {
-    const el = document.createElement("option");
-    el.value = String(opt.rowIndex);
-    el.textContent = opt.label;
-    if (i === 0) el.selected = true;
-    depthSelect.appendChild(el);
-  });
-}
-
-function createMetricInputs() {
-  const fields = [
-    ["date", "Date (MM/DD/YY)"],
-    ["time", "Time"],
-    ["temp", "Temp."],
-    ["cond", "Cond."],
-    ["salinity", "Salinity"],
-    ["doMgL", "DO mg/L"],
-    ["doPct", "DO%"],
-    ["ph", "pH"],
-    ["turb", "Turb"]
-  ];
-  const container = document.getElementById("metricGrid");
-  container.innerHTML = "";
-  fields.forEach(([key, label]) => {
-    const card = document.createElement("div");
-    card.className = "metric";
-    card.innerHTML = `<div class="k">${label}</div><input data-key="${key}" type="text" />`;
-    container.appendChild(card);
-  });
-  container.addEventListener("input", (e) => {
-    if (e.target.matches("input[data-key]")) {
-      state.parsed[e.target.dataset.key] = e.target.value.trim();
-    }
-  });
-}
-
-function renderParsed() {
-  document.querySelectorAll("#metricGrid input[data-key]").forEach(input => {
-    input.value = state.parsed[input.dataset.key] || "";
-  });
-}
-
-function loadRecords() {
-  try {
-    state.records = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    state.records = [];
-  }
-  renderRecords();
-}
-
-function saveRecords() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
-}
-
-function renderRecords() {
-  const tbody = document.getElementById("recordsBody");
-  tbody.innerHTML = "";
-  state.records.forEach((rec, idx) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${rec.site}</td>
-      <td>${rec.depthLabel}</td>
-      <td>${rec.date || ""}</td>
-      <td>${rec.time || ""}</td>
-      <td>${rec.temp || ""}</td>
-      <td>${rec.cond || ""}</td>
-      <td>${rec.salinity || ""}</td>
-      <td>${rec.doMgL || ""}</td>
-      <td>${rec.doPct || ""}</td>
-      <td>${rec.ph || ""}</td>
-      <td>${rec.turb || ""}</td>
-      <td><button type="button" class="danger small-delete" data-index="${idx}">Delete</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll("button[data-index]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      state.records.splice(Number(btn.dataset.index), 1);
-      saveRecords();
-      renderRecords();
-    });
-  });
-}
-
-async function runOcr() {
-  if (!state.selectedImageDataUrl) {
-    setStatus("Choose a photo first.");
-    return;
-  }
-  setStatus("Preparing image for OCR...");
-  const processed = await preprocessImage(state.selectedImageDataUrl);
-  setStatus("Running OCR... this can take a little while on iPhone.");
-  const result = await Tesseract.recognize(processed, 'eng', {
-    logger: m => {
-      if (m.status === 'recognizing text') {
-        setStatus(`OCR in progress: ${Math.round((m.progress || 0) * 100)}%`);
-      }
-    }
-  });
-  const text = result?.data?.text || "";
-  document.getElementById('rawOcrText').value = text;
-  state.parsed = parseYsiText(text);
-  if (!state.parsed.date) {
-    const surveyDate = document.getElementById("surveyDate").value;
-    state.parsed.date = surveyDate ? mmddyyFromIso(surveyDate) : "";
-  }
-  if (!state.parsed.time) {
-    state.parsed.time = formatTimeFromDateObj(new Date());
-  }
-  renderParsed();
-  const gotValues = [state.parsed.temp, state.parsed.cond, state.parsed.salinity, state.parsed.doMgL, state.parsed.doPct, state.parsed.ph, state.parsed.turb].filter(Boolean).length;
-  if (gotValues === 0) {
-    setStatus("OCR ran, but the parser did not recognize the values. Check the Raw OCR text box and enter values manually if needed.");
-  } else {
-    setStatus("OCR complete. Review the values, edit anything needed, then tap Save reading.");
-  }
-}
-
-function selectedRowMeta() {
-  const rowIndex = Number(document.getElementById("depthSelect").value);
-  const row = TEMPLATE.rows[rowIndex];
-  const siteInfo = state.sites.find(s => s.site === row["Site"]);
-  const opt = siteInfo.options.find(o => o.rowIndex === rowIndex);
-  return { rowIndex, row, depthLabel: opt?.label || "" };
-}
-
-function saveReading() {
-  const site = document.getElementById("siteSelect").value;
-  if (!site) {
-    setStatus("Select a site first.");
-    return;
-  }
-  const meta = selectedRowMeta();
-  const dateFromPicker = document.getElementById("surveyDate").value;
-  const record = {
-    rowIndex: meta.rowIndex,
-    site,
-    creek: meta.row["Creek"],
-    depthLabel: meta.depthLabel,
-    date: state.parsed.date || (dateFromPicker ? mmddyyFromIso(dateFromPicker) : ""),
-    time: state.parsed.time || formatTimeFromDateObj(new Date()),
-    temp: state.parsed.temp || "",
-    cond: state.parsed.cond || "",
-    salinity: state.parsed.salinity || "",
-    doMgL: state.parsed.doMgL || "",
-    doPct: state.parsed.doPct || "",
-    ph: state.parsed.ph || "",
-    turb: state.parsed.turb || ""
-  };
-
-  const existingIndex = state.records.findIndex(r => r.rowIndex === record.rowIndex);
-  if (existingIndex >= 0) {
-    state.records[existingIndex] = record;
-    setStatus(`Updated existing reading for ${record.site} / ${record.depthLabel}.`);
-  } else {
-    state.records.push(record);
-    setStatus(`Saved reading for ${record.site} / ${record.depthLabel}.`);
-  }
-  saveRecords();
-  renderRecords();
-}
-
-function exportWorkbook() {
-  const exportRows = TEMPLATE.rows.map(row => ({ ...row }));
-  state.records.forEach(rec => {
-    const row = exportRows[rec.rowIndex];
-    row["Date"] = rec.date || row["Date"] || "";
-    row["Time"] = rec.time || "";
-    row["Temp."] = rec.temp !== "" ? Number(rec.temp) : "";
-    row["Cond."] = rec.cond !== "" ? Number(rec.cond) : "";
-    row["Salinity"] = rec.salinity !== "" ? Number(rec.salinity) : "";
-    row["DO mg/L"] = rec.doMgL !== "" ? Number(rec.doMgL) : "";
-    row["DO%"] = rec.doPct !== "" ? Number(rec.doPct) : "";
-    row["pH"] = rec.ph !== "" ? Number(rec.ph) : "";
-    row["Turb"] = rec.turb !== "" ? Number(rec.turb) : "";
-    row["Personnel"] = "";
-    row["Personnel_2"] = "";
-    row["Weather"] = "";
-    row["Rain"] = "";
-  });
-
-  const aoa = [];
-  aoa.push(TEMPLATE.headers.map(h => h === "Personnel_2" ? "Personnel" : h));
-  exportRows.forEach(row => {
-    aoa.push(TEMPLATE.headers.map(h => row[h] ?? ""));
-  });
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [{wch:12},{wch:16},{wch:16},{wch:14},{wch:10},{wch:14},{wch:12},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:8},{wch:8},{wch:10},{wch:10},{wch:10}];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  const stamp = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `water_quality_export_${stamp}.xlsx`);
-  setStatus("Excel file downloaded.");
-}
-
-function init() {
-  buildSites();
-  createMetricInputs();
-  populateSiteSelect();
-  loadRecords();
-
-  const today = new Date();
-  document.getElementById("surveyDate").value = today.toISOString().slice(0,10);
-  document.getElementById("siteSelect").addEventListener("change", refreshDepthSelect);
-
-  document.getElementById("photoInput").addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      state.selectedImageDataUrl = reader.result;
-      document.getElementById("imagePreview").src = reader.result;
-      setStatus(`Loaded photo: ${file.name}`);
-    };
-    reader.readAsDataURL(file);
-  });
-
-  document.getElementById("runOcrBtn").addEventListener("click", () => {
-    runOcr().catch(err => {
-      console.error(err);
-      setStatus("OCR failed. You can still type values in manually.");
-    });
-  });
-
-  document.getElementById("saveBtn").addEventListener("click", saveReading);
-  document.getElementById("exportBtn").addEventListener("click", exportWorkbook);
-  document.getElementById("clearBtn").addEventListener("click", () => {
-    if (!confirm("Clear all saved readings from this phone/browser?")) return;
-    state.records = [];
-    saveRecords();
-    renderRecords();
-    setStatus("Saved readings cleared.");
-  });
-
-  renderParsed();
-}
-init();
 </script>
+
 </body>
 </html>
