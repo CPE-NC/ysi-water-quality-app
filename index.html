@@ -16,14 +16,13 @@ body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(-
 .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:14px; }
 h1,h2 { margin:0 0 12px; }
 .version { display:inline-block; margin-bottom:10px; padding:4px 8px; border-radius:999px; background:#eef4ff; color:#0b65c2; font-size:12px; font-weight:700; }
-.grid2,.grid3,.grid4 { display:grid; gap:12px; }
+.grid2,.grid4 { display:grid; gap:12px; }
 .grid2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.grid3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .grid4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
 @media(max-width:850px) { .grid4 { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media(max-width:700px) { .grid2,.grid3,.grid4 { grid-template-columns:1fr; } }
+@media(max-width:700px) { .grid2,.grid4 { grid-template-columns:1fr; } }
 label { display:block; font-weight:700; margin-bottom:6px; }
-input,select,button,textarea { width:100%; padding:12px; border:1px solid #cfd6e0; border-radius:12px; font-size:16px; background:#fff; }
+input,select,button { width:100%; padding:12px; border:1px solid #cfd6e0; border-radius:12px; font-size:16px; background:#fff; }
 button { border:none; background:var(--primary); color:#fff; font-weight:700; cursor:pointer; }
 button.secondary { background:var(--secondary); color:#111827; }
 button.danger { background:#b42318; }
@@ -32,7 +31,7 @@ button.secondary:hover { background:#d1d5db; }
 button.danger:hover { background:#911d12; }
 .small { color:var(--muted); font-size:14px; line-height:1.4; }
 .status { margin-top:10px; font-weight:700; }
-img { width:100%; border:1px solid #cfd6e0; border-radius:12px; background:#fff; }
+img { width:100%; border:1px solid #cfd6e0; border-radius:12px; background:#fff; display:none; }
 .btnrow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
 @media(max-width:700px) { .btnrow { grid-template-columns:1fr; } }
 .table-wrap { overflow:auto; max-height:320px; }
@@ -45,9 +44,9 @@ th { position:sticky; top:0; background:#f9fafb; }
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="version">v9 manual entry with photo</div>
+    <div class="version">v10 template-order export</div>
     <h1>YSI Water Quality Logger</h1>
-    <div class="small">This version is manual entry by design. Capture a photo for your records, then type the readings into the fields below. This will be more reliable in the field than OCR.</div>
+    <div class="small">Manual entry with photo reference. Export now follows your template row order exactly. For each date in your saved readings, the app builds the rows in the same sequence as the template and fills matching site/depth entries.</div>
   </div>
 
   <div class="card">
@@ -89,7 +88,7 @@ th { position:sticky; top:0; background:#f9fafb; }
     </div>
 
     <div style="margin-top:12px;">
-      <img id="preview" alt="Photo preview" style="display:none;">
+      <img id="preview" alt="Photo preview">
     </div>
 
     <div id="status" class="status"></div>
@@ -134,9 +133,9 @@ th { position:sticky; top:0; background:#f9fafb; }
 </div>
 
 <script>
-const SITE_OPTIONS = ["LC-RR", "BC-CBR", "MOT-CBR", "MOT-ND", "PG-ML", "PG-CH", "PG-NC", "SC-CH", "SC-CD", "SC-NK", "SC-GR", "IC-HS", "IC-SID", "FC-4", "FC-6", "FC-13", "FC-FOY", "PC-BDUS", "PC-BDDS", "PC-M"];
-const CREEK_MAP = {"LC-RR": "Lords", "BC-CBR": "Barnard", "MOT-CBR": "Motts", "MOT-ND": "Motts", "PG-ML": "Prince Georges", "PG-CH": "Prince Georges", "PG-NC": "Prince Georges", "SC-CH": "Smith", "SC-CD": "Smith", "SC-NK": "Smith", "SC-GR": "Smith", "IC-HS": "Island", "IC-SID": "Island", "FC-4": "Futch", "FC-6": "Futch", "FC-13": "Futch", "FC-FOY": "Futch", "PC-BDUS": "Pages", "PC-BDDS": "Pages", "PC-M": "Pages"};
-const STORAGE_KEY = "ysi_logger_v9_manual";
+const SITE_OPTIONS = ["BC-CBR", "FC-13", "FC-4", "FC-6", "FC-FOY", "IC-HS", "IC-SID", "LC-RR", "MOT-CBR", "MOT-ND", "PC-BDDS", "PC-BDUS", "PC-M", "PG-CH", "PG-ML", "PG-NC", "SC-CD", "SC-CH", "SC-GR", "SC-NK"];
+const TEMPLATE_ROWS = [{"Creek": "Lords", "Site": "LC-RR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Lords", "Site": "LC-RR", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Barnard", "Site": "BC-CBR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Barnard", "Site": "BC-CBR", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Motts", "Site": "MOT-CBR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Motts", "Site": "MOT-ND", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-ML", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-CH", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-CH", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Prince Georges", "Site": "PG-NC", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-NC", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Smith", "Site": "SC-CH", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Smith", "Site": "SC-CH", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Smith", "Site": "SC-CD", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Smith", "Site": "SC-NK", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Smith", "Site": "SC-NK", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Smith", "Site": "SC-GR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Island", "Site": "IC-HS", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Island", "Site": "IC-HS", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Island", "Site": "IC-SID", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Island", "Site": "IC-SID", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-4", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-4", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-6", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-6", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-13", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-13", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-FOY", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-FOY", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Pages", "Site": "PC-BDUS", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Pages", "Site": "PC-BDDS", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Pages", "Site": "PC-M", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Pages", "Site": "PC-M", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}];
+const STORAGE_KEY = "ysi_logger_v10_template";
 let savedReadings = [];
 let currentPhotoData = "";
 
@@ -200,6 +199,11 @@ function getDepthValue() {
   return $("depthSelect").value === "custom" ? ($("customDepth").value || "") : "0.1";
 }
 
+function normalizeDepth(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
 function clearReadingFields() {
   ["temp","cond","salinity","do_mg","do_pct","ph","turb"].forEach(id => $(id).value = "");
 }
@@ -210,6 +214,9 @@ function clearForm() {
   $("preview").src = "";
   $("preview").style.display = "none";
   currentPhotoData = "";
+  $("depthSelect").value = "0.1";
+  $("customDepth").value = "";
+  $("customDepthWrap").style.display = "none";
   setDefaults();
   setStatus("Form cleared.", false);
 }
@@ -231,7 +238,7 @@ function saveReading() {
   const reading = {
     id: Date.now().toString(),
     site: $("site").value,
-    depth: getDepthValue(),
+    depth: normalizeDepth(getDepthValue()),
     date: $("date").value,
     time: $("time").value,
     temp: $("temp").value,
@@ -306,40 +313,76 @@ function clearAllReadings() {
   setStatus("All saved readings cleared.", false);
 }
 
+function dateKey(mmddyy) {
+  return normalizeDepth(mmddyy);
+}
+
+function buildTemplateOrderedRows() {
+  const byDate = new Map();
+
+  savedReadings.forEach(r => {
+    const dkey = dateKey(r.date);
+    if (!byDate.has(dkey)) byDate.set(dkey, []);
+    byDate.get(dkey).push(r);
+  });
+
+  const sortedDates = Array.from(byDate.keys()).sort();
+
+  const output = [];
+  sortedDates.forEach(dkey => {
+    const dayReadings = byDate.get(dkey);
+
+    TEMPLATE_ROWS.forEach(templateRow => {
+      const tDepth = normalizeDepth(templateRow["Depth"]);
+      const match = dayReadings.find(r =>
+        r.site === templateRow["Site"] &&
+        normalizeDepth(r.depth) === tDepth
+      );
+
+      output.push({
+        "Date": dkey,
+        "Personnel": "",
+        "Personnel_2": "",
+        "Weather": "",
+        "Rain": "",
+        "Creek": templateRow["Creek"],
+        "Site": templateRow["Site"],
+        "Time": match ? (match.time || "") : "",
+        "Depth ": templateRow["Depth"],
+        "Temp.": match ? (match.temp || "") : "",
+        "Cond.": match ? (match.cond || "") : "",
+        "Salinity": match ? (match.salinity || "") : "",
+        "DO mg/L": match ? (match.do_mg || "") : "",
+        "DO%": match ? (match.do_pct || "") : "",
+        "pH": match ? (match.ph || "") : "",
+        "Turb": match ? (match.turb || "") : "",
+        "Entero.": templateRow["Entero."],
+        "Chl-A": templateRow["Chl-A"]
+      });
+    });
+  });
+
+  return output;
+}
+
 function exportExcel() {
   if (!savedReadings.length) {
     setStatus("No saved readings to export.", true);
     return;
   }
 
-  const rows = savedReadings.map(r => ({
-    "Date": r.date || "",
-    "Personnel1": "",
-    "Personnel2": "",
-    "Weather": "",
-    "Rain": "",
-    "Creek": CREEK_MAP[r.site] || "",
-    "Site": r.site || "",
-    "Time": r.time || "",
-    "Depth": r.depth || "",
-    "Temp.": r.temp || "",
-    "Cond.": r.cond || "",
-    "Salinity": r.salinity || "",
-    "DO mg/L": r.do_mg || "",
-    "DO%": r.do_pct || "",
-    "pH": r.ph || "",
-    "Turb": r.turb || "",
-    "Entero.": "",
-    "Chl-A": ""
-  }));
+  const rows = buildTemplateOrderedRows();
 
-  const ws = XLSX.utils.json_to_sheet(rows, {
-    header: ["Date","Personnel1","Personnel2","Weather","Rain","Creek","Site","Time","Depth","Temp.","Cond.","Salinity","DO mg/L","DO%","pH","Turb","Entero.","Chl-A"]
-  });
+  const header = ["Date","Personnel","Personnel_2","Weather","Rain","Creek","Site","Time","Depth ","Temp.","Cond.","Salinity","DO mg/L","DO%","pH","Turb","Entero.","Chl-A"];
+  const ws = XLSX.utils.json_to_sheet(rows, { header });
+
+  // Rename header cell for second Personnel column to match template display.
+  ws["C1"] = { t:"s", v:"Personnel" };
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  XLSX.writeFile(wb, "YSI_Water_Quality_Data.xlsx");
-  setStatus("Excel exported.", false);
+  XLSX.writeFile(wb, "YSI_Water_Quality_Template_Order.xlsx");
+  setStatus("Excel exported in template order.", false);
 }
 
 init();
