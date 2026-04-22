@@ -44,9 +44,9 @@ th { position:sticky; top:0; background:#f9fafb; }
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="version">v10 template-order export</div>
+    <div class="version">v11 custom-depth export fix</div>
     <h1>YSI Water Quality Logger</h1>
-    <div class="small">Manual entry with photo reference. Export now follows your template row order exactly. For each date in your saved readings, the app builds the rows in the same sequence as the template and fills matching site/depth entries.</div>
+    <div class="small">Manual entry with photo reference. Export follows your template row order, places custom-depth readings into the second/deep row where available, and appends any unmatched extra readings so nothing gets dropped.</div>
   </div>
 
   <div class="card">
@@ -136,6 +136,7 @@ th { position:sticky; top:0; background:#f9fafb; }
 const SITE_OPTIONS = ["BC-CBR", "FC-13", "FC-4", "FC-6", "FC-FOY", "IC-HS", "IC-SID", "LC-RR", "MOT-CBR", "MOT-ND", "PC-BDDS", "PC-BDUS", "PC-M", "PG-CH", "PG-ML", "PG-NC", "SC-CD", "SC-CH", "SC-GR", "SC-NK"];
 const TEMPLATE_ROWS = [{"Creek": "Lords", "Site": "LC-RR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Lords", "Site": "LC-RR", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Barnard", "Site": "BC-CBR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Barnard", "Site": "BC-CBR", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Motts", "Site": "MOT-CBR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Motts", "Site": "MOT-ND", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-ML", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-CH", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-CH", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Prince Georges", "Site": "PG-NC", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Prince Georges", "Site": "PG-NC", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Smith", "Site": "SC-CH", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Smith", "Site": "SC-CH", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Smith", "Site": "SC-CD", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Smith", "Site": "SC-NK", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Smith", "Site": "SC-NK", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Smith", "Site": "SC-GR", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Island", "Site": "IC-HS", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Island", "Site": "IC-HS", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Island", "Site": "IC-SID", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Island", "Site": "IC-SID", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-4", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-4", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-6", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-6", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-13", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-13", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Futch", "Site": "FC-FOY", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Futch", "Site": "FC-FOY", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}, {"Creek": "Pages", "Site": "PC-BDUS", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Pages", "Site": "PC-BDDS", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Pages", "Site": "PC-M", "Depth": "0.1", "Entero.": "", "Chl-A": ""}, {"Creek": "Pages", "Site": "PC-M", "Depth": "", "Entero.": "N/A", "Chl-A": "N/A"}];
 const STORAGE_KEY = "ysi_logger_v10_template";
+const CREEK_MAP = Object.fromEntries(TEMPLATE_ROWS.map(r => [r.Site, r.Creek]));
 let savedReadings = [];
 let currentPhotoData = "";
 
@@ -201,7 +202,16 @@ function getDepthValue() {
 
 function normalizeDepth(value) {
   if (value === null || value === undefined) return "";
-  return String(value).trim();
+  const raw = String(value).trim();
+  if (!raw) return "";
+  const n = Number(raw);
+  if (!Number.isNaN(n)) return String(n);
+  return raw;
+}
+
+function isCustomDepth(value) {
+  const d = normalizeDepth(value);
+  return d !== "" && d !== "0.1";
 }
 
 function clearReadingFields() {
@@ -260,10 +270,23 @@ function saveReading() {
     return;
   }
 
-  savedReadings.push(reading);
+  const existingIndex = savedReadings.findIndex(r =>
+    r.site === reading.site &&
+    normalizeDepth(r.depth) === normalizeDepth(reading.depth) &&
+    (r.date || "") === (reading.date || "")
+  );
+
+  if (existingIndex >= 0) {
+    reading.id = savedReadings[existingIndex].id || reading.id;
+    savedReadings[existingIndex] = reading;
+    setStatus("Reading updated.", false);
+  } else {
+    savedReadings.push(reading);
+    setStatus("Reading saved.", false);
+  }
+
   persistSaved();
   renderSaved();
-  setStatus("Reading saved.", false);
 }
 
 function renderSaved() {
@@ -314,7 +337,17 @@ function clearAllReadings() {
 }
 
 function dateKey(mmddyy) {
-  return normalizeDepth(mmddyy);
+  return String(mmddyy || "").trim();
+}
+
+function getLatestMatchingReading(dayReadings, site, matcher, usedIds) {
+  for (let i = dayReadings.length - 1; i >= 0; i--) {
+    const r = dayReadings[i];
+    if (usedIds.has(r.id)) continue;
+    if (r.site !== site) continue;
+    if (matcher(r)) return r;
+  }
+  return null;
 }
 
 function buildTemplateOrderedRows() {
@@ -327,17 +360,24 @@ function buildTemplateOrderedRows() {
   });
 
   const sortedDates = Array.from(byDate.keys()).sort();
-
   const output = [];
+  let unmatchedCount = 0;
+
   sortedDates.forEach(dkey => {
     const dayReadings = byDate.get(dkey);
+    const usedIds = new Set();
 
     TEMPLATE_ROWS.forEach(templateRow => {
       const tDepth = normalizeDepth(templateRow["Depth"]);
-      const match = dayReadings.find(r =>
-        r.site === templateRow["Site"] &&
-        normalizeDepth(r.depth) === tDepth
-      );
+      let match = null;
+
+      if (tDepth === "") {
+        match = getLatestMatchingReading(dayReadings, templateRow["Site"], r => isCustomDepth(r.depth), usedIds);
+      } else {
+        match = getLatestMatchingReading(dayReadings, templateRow["Site"], r => normalizeDepth(r.depth) === tDepth, usedIds);
+      }
+
+      if (match) usedIds.add(match.id);
 
       output.push({
         "Date": dkey,
@@ -348,7 +388,7 @@ function buildTemplateOrderedRows() {
         "Creek": templateRow["Creek"],
         "Site": templateRow["Site"],
         "Time": match ? (match.time || "") : "",
-        "Depth ": templateRow["Depth"],
+        "Depth ": match && tDepth === "" ? (match.depth || "") : templateRow["Depth"],
         "Temp.": match ? (match.temp || "") : "",
         "Cond.": match ? (match.cond || "") : "",
         "Salinity": match ? (match.salinity || "") : "",
@@ -360,9 +400,35 @@ function buildTemplateOrderedRows() {
         "Chl-A": templateRow["Chl-A"]
       });
     });
+
+    const extras = dayReadings.filter(r => !usedIds.has(r.id));
+    unmatchedCount += extras.length;
+
+    extras.forEach(r => {
+      output.push({
+        "Date": dkey,
+        "Personnel": "",
+        "Personnel_2": "",
+        "Weather": "",
+        "Rain": "",
+        "Creek": CREEK_MAP[r.site] || "",
+        "Site": r.site || "",
+        "Time": r.time || "",
+        "Depth ": r.depth || "",
+        "Temp.": r.temp || "",
+        "Cond.": r.cond || "",
+        "Salinity": r.salinity || "",
+        "DO mg/L": r.do_mg || "",
+        "DO%": r.do_pct || "",
+        "pH": r.ph || "",
+        "Turb": r.turb || "",
+        "Entero.": "",
+        "Chl-A": ""
+      });
+    });
   });
 
-  return output;
+  return { rows: output, unmatchedCount };
 }
 
 function exportExcel() {
@@ -371,18 +437,21 @@ function exportExcel() {
     return;
   }
 
-  const rows = buildTemplateOrderedRows();
-
+  const built = buildTemplateOrderedRows();
+  const rows = built.rows;
   const header = ["Date","Personnel","Personnel_2","Weather","Rain","Creek","Site","Time","Depth ","Temp.","Cond.","Salinity","DO mg/L","DO%","pH","Turb","Entero.","Chl-A"];
   const ws = XLSX.utils.json_to_sheet(rows, { header });
-
-  // Rename header cell for second Personnel column to match template display.
   ws["C1"] = { t:"s", v:"Personnel" };
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
   XLSX.writeFile(wb, "YSI_Water_Quality_Template_Order.xlsx");
-  setStatus("Excel exported in template order.", false);
+
+  if (built.unmatchedCount > 0) {
+    setStatus(`Excel exported. ${built.unmatchedCount} reading(s) did not fit a standard template row and were appended below the template block so they were not lost.`, false);
+  } else {
+    setStatus("Excel exported in template order.", false);
+  }
 }
 
 init();
